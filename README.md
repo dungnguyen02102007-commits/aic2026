@@ -1,18 +1,18 @@
 # AIC 2026 — Hệ thống truy hồi video đa phương thức
 
-Hệ thống dự thi AI Challenge HCMC 2026 (bảng A — Sinh viên): KIS / AVS / VQA / Conversational KIS trên kho video lớn.
+Hệ thống dự thi AI Challenge HCMC 2026 (bảng A - Sinh viên): KIS / AVS / VQA / Conversational KIS trên kho video lớn.
 
 ## Cấu trúc repo
 
 | Thư mục | Mảng | Phụ trách |
 |---|---|---|
-| `indexing/` | N1 — Dữ liệu & chỉ mục (FAISS, SigLIP, OCR, ASR, BM25) | Tuấn Anh |
-| `backend/` | N2 — Lõi truy hồi (FastAPI, RRF, temporal grouping) | Tiến Khang |
-| `agent/` | N3 — Agent & suy luận (LLM understanding, VLM rerank, KISC, VQA) | Gia Thoại |
-| `ui/` | N4 — Giao diện (lưới keyframe, timeline, chat KISC) | Đình Trung |
-| `eval/` | N5 — Benchmark & vận hành | Quang Dũng |
+| `indexing/` | N1 - Dữ liệu & chỉ mục (FAISS, SigLIP, OCR, ASR, BM25) | Tuấn Anh |
+| `backend/` | N2 - Lõi truy hồi (FastAPI, RRF, temporal grouping) | Tiến Khang |
+| `agent/` | N3 - Agent & suy luận (LLM understanding, VLM rerank, KISC, VQA) | Gia Thoại |
+| `ui/` | N4 - Giao diện (lưới keyframe, timeline, chat KISC) | Đình Trung |
+| `eval/` | N5 - Benchmark & vận hành | Quang Dũng |
 | `docs/` | Tài liệu onboarding + hợp đồng API | Cả đội |
-| `data/` | Dữ liệu & index — **KHÔNG commit** (gitignore) | — |
+| `data/` | Dữ liệu & index - **KHÔNG commit** (gitignore) | - |
 
 ## Bắt đầu
 
@@ -29,4 +29,4 @@ Hệ thống dự thi AI Challenge HCMC 2026 (bảng A — Sinh viên): KIS / AV
 
 ## Hợp đồng API
 
-Xem mục 3 của `docs/onboarding/00-tong-quan-va-hop-dong-api.md`. Chủ sở hữu: Tiến Khang (N2) — đổi schema phải thông báo cả đội.
+Xem mục 3 của `docs/onboarding/00-tong-quan-va-hop-dong-api.md`. Chủ sở hữu: Tiến Khang (N2) - đổi schema phải thông báo cả đội.
