@@ -1,0 +1,32 @@
+# Dữ liệu & index — chia sẻ qua link, không qua git
+data/
+*.index
+*.npy
+*.faiss
+*.parquet
+*.sqlite
+*.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Node / UI
+node_modules/
+dist/
+.next/
+
+# Bí mật — API key để trong .env, KHÔNG BAO GIỜ commit
+.env
+.env.*
+*.key
+
+# Log & tạm
+*.log
+logs/
+*.jsonl.gz
+.DS_Store
+Thumbs.db
