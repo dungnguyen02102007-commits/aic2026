@@ -22,8 +22,8 @@ Hệ thống dự thi AI Challenge HCMC 2026 (bảng A - Sinh viên): KIS / AVS 
 
 ## Quy ước làm việc
 
-- Không commit thẳng vào `main` — tạo branch `ten-minh/mo-ta-ngan`, mở Pull Request, cần 1 người review.
-- Thay đổi ảnh hưởng chất lượng tìm kiếm phải kèm số benchmark (`eval/`) — **không có số, không merge**.
+- Không commit thẳng vào `main` - tạo branch `ten-minh/mo-ta-ngan`, mở Pull Request, cần 1 người review.
+- Thay đổi ảnh hưởng chất lượng tìm kiếm phải kèm số benchmark (`eval/`) - **không có số, không merge**.
 - Dữ liệu lớn (video, keyframe, embedding, index) để trong `data/`, chia sẻ qua link — không đưa vào git.
 - Standup 3 dòng mỗi tối trên nhóm chat; demo nội bộ tối Chủ nhật hằng tuần.
 
