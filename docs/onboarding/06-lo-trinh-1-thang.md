@@ -1,7 +1,13 @@
 # Lộ trình 1 tháng — Đội AIC 2026 (20/7 → 16/8/2026)
 
 > Tuần 1 = M1, Tuần 2 = M2, Tuần 3 = M3, Tuần 4 = M4 + tập dượt đầu tiên.
-> Nếu BTC chưa phát dữ liệu 2026: dùng dữ liệu mùa cũ (keyframes + CLIP features các năm trước lan truyền trong cộng đồng AIC) — toàn bộ pipeline không đổi, chỉ swap dữ liệu khi BTC phát.
+>
+> **CẬP NHẬT 20/7: BTC phát dataset đợt 1 ngày THỨ BẢY 25/07/2026.**
+> Điều chỉnh tuần 1: cả tuần làm việc trên MOCK + dữ liệu giả tự sinh; Tuấn Anh viết sẵn
+> toàn bộ script (inventory, metadata DB) trên cấu trúc dữ liệu giả để ngày 25/7 chỉ việc
+> trỏ đường dẫn và bấm chạy. Cuối tuần 25–26/7 là "48 giờ dữ liệu thật" — cả đội trực:
+> N1 chạy inventory + FAISS baseline, N2 nối index thật, N4 nối UI.
+> Gate M1 (end-to-end trên dữ liệu THẬT) chốt vào demo tối Chủ nhật 26/7.
 
 ## Nhịp làm việc cố định (cả tháng)
 
