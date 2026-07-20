@@ -2,103 +2,213 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<title>AIC2026 — Video Search</title>
+<title>AIC26 · Search Deck</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --bg:#0f1115; --panel:#181b22; --border:#2a2f3a; --text:#e6e8ee;
-          --dim:#8a93a5; --accent:#4f8cff; --ok:#3fb96b; --bad:#e05555; }
+  /* ── Tokens: "phòng dựng phim ban đêm" ─────────────────────────── */
+  :root {
+    --bg:#141317; --surface:#1a1920; --raised:#211f28; --line:#2e2c37;
+    --text:#ede9e1; --muted:#8f8c9b; --faint:#5c5966;
+    --amber:#f2a93b;            /* đèn tally — selection & focus */
+    --amber-dim:#f2a93b55;
+    --cyan:#7cc7d8;             /* timecode & metadata */
+    --good:#5bd08b; --bad:#e85d75;
+    --mono:ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;
+    --sans:system-ui,'Segoe UI',Roboto,sans-serif;
+  }
   * { box-sizing:border-box; margin:0; }
-  body { background:var(--bg); color:var(--text);
-         font:14px/1.45 system-ui, 'Segoe UI', sans-serif; }
-  header { display:flex; gap:8px; align-items:center; padding:10px 14px;
-           border-bottom:1px solid var(--border); position:sticky; top:0;
-           background:var(--bg); z-index:10; }
-  #q { flex:1; padding:9px 12px; font-size:15px; background:var(--panel);
-       border:1px solid var(--border); border-radius:8px; color:var(--text); }
-  #q:focus { outline:1px solid var(--accent); }
-  select, button { padding:8px 12px; background:var(--panel); color:var(--text);
-       border:1px solid var(--border); border-radius:8px; cursor:pointer; }
-  button:hover { border-color:var(--accent); }
-  #status { padding:6px 14px; color:var(--dim); font-size:12.5px;
-            display:flex; gap:16px; }
-  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-          gap:8px; padding:10px 14px; }
+  html { color-scheme:dark; }
+  body { background:var(--bg); color:var(--text); font:14px/1.45 var(--sans); }
+  ::selection { background:var(--amber-dim); }
+  :focus-visible { outline:2px solid var(--amber); outline-offset:1px; }
+  @media (prefers-reduced-motion:no-preference) {
+    .card, button, .seg span { transition:border-color .1s, background .1s, opacity .1s; }
+  }
+
+  /* ── Header: thanh điều khiển ──────────────────────────────────── */
+  header { display:flex; gap:10px; align-items:center; padding:10px 14px;
+           border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10;
+           background:linear-gradient(var(--surface), var(--bg)); }
+  .brand { display:flex; align-items:center; gap:8px; margin-right:2px; user-select:none; }
+  .brand .dot { width:10px; height:10px; background:var(--amber); border-radius:2px;
+                box-shadow:0 0 8px var(--amber-dim); }
+  .brand b { font:700 13px/1.1 var(--sans); letter-spacing:.08em; }
+  .brand small { display:block; font:10px/1.1 var(--mono); color:var(--muted);
+                 letter-spacing:.14em; }
+  #qwrap { flex:1; position:relative; }
+  #q { width:100%; padding:9px 84px 9px 12px; font:15px var(--sans);
+       background:var(--raised); border:1px solid var(--line); border-radius:8px;
+       color:var(--text); }
+  #q::placeholder { color:var(--faint); }
+  #q:focus { border-color:var(--amber); outline:none; }
+  #qwrap .hint { position:absolute; right:8px; top:50%; translate:0 -50%;
+       display:flex; gap:4px; pointer-events:none; }
+  .seg { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg span { padding:8px 14px; cursor:pointer; font:600 12px var(--mono);
+              letter-spacing:.1em; color:var(--muted); }
+  .seg span.on { background:var(--amber); color:#1a1408; }
+  button { padding:8px 14px; background:var(--raised); color:var(--text);
+           border:1px solid var(--line); border-radius:8px; cursor:pointer;
+           font:600 13px var(--sans); }
+  button:hover { border-color:var(--amber); }
+  button.primary { background:var(--amber); border-color:var(--amber); color:#1a1408; }
+  button.primary:hover { filter:brightness(1.08); }
+  kbd { font:11px var(--mono); background:var(--bg); border:1px solid var(--line);
+        border-bottom-width:2px; border-radius:4px; padding:1px 5px; color:var(--muted); }
+
+  /* ── Status bus ────────────────────────────────────────────────── */
+  #status { display:flex; gap:18px; align-items:center; padding:5px 14px;
+            font:12px var(--mono); color:var(--muted); letter-spacing:.03em;
+            border-bottom:1px solid var(--line); background:var(--surface); }
+  #status .live { color:var(--good); }
+  #status .warn { color:var(--bad); }
+  #status .tc { color:var(--cyan); }
+  #status .fb { color:var(--amber); }
+
+  /* ── Lưới keyframe ─────────────────────────────────────────────── */
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(178px,1fr));
+          gap:8px; padding:10px 14px 40px; }
   .card { position:relative; border:2px solid transparent; border-radius:8px;
-          overflow:hidden; cursor:pointer; background:var(--panel); }
+          overflow:hidden; cursor:pointer; background:var(--raised); }
   .card img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
-  .card.sel { border-color:var(--accent); }
-  .card.pos { border-color:var(--ok); }
-  .card.neg { border-color:var(--bad); opacity:.55; }
-  .card .cap { padding:4px 6px; font-size:11px; color:var(--dim);
-               display:flex; justify-content:space-between; }
-  .card .score { position:absolute; top:4px; right:4px; background:#000a;
-                 padding:1px 6px; border-radius:6px; font-size:11px; }
-  #detail { position:fixed; right:0; top:0; bottom:0; width:min(560px,90vw);
-            background:var(--panel); border-left:1px solid var(--border);
-            padding:14px; overflow-y:auto; display:none; z-index:20; }
-  #detail img.big { width:100%; border-radius:8px; }
-  #strip { display:flex; gap:4px; overflow-x:auto; margin-top:10px;
-           padding-bottom:6px; }
-  #strip img { height:64px; border-radius:4px; cursor:pointer;
-               border:2px solid transparent; }
-  #strip img.cur { border-color:var(--accent); }
+  .card .meter { height:3px; background:var(--line); }
+  .card .meter i { display:block; height:100%; background:var(--cyan); }
+  .card .cap { display:flex; justify-content:space-between; gap:6px;
+               padding:4px 7px 5px; font:10.5px var(--mono); color:var(--muted); }
+  .card .cap .tc { color:var(--cyan); }
+  .card:hover { border-color:var(--faint); }
+  .card.sel { border-color:var(--amber); box-shadow:0 0 0 1px var(--amber-dim),
+              0 0 14px -4px var(--amber-dim); }
+  .card.sel .meter i { background:var(--amber); }
+  .card .tag { position:absolute; top:0; left:0; font:700 9px/1 var(--mono);
+               letter-spacing:.1em; padding:4px 7px; border-radius:0 0 6px 0; display:none; }
+  .card.pos .tag { display:block; background:var(--good); color:#0c2416; }
+  .card.pos .tag::after { content:"KEEP"; }
+  .card.neg { opacity:.4; }
+  .card.neg .tag { display:block; background:var(--bad); color:#2b0d13; }
+  .card.neg .tag::after { content:"DROP"; }
+
+  /* ── Trạng thái trống: lời mời hành động ───────────────────────── */
+  #empty { padding:64px 20px; text-align:center; color:var(--muted); }
+  #empty .glyph { font:400 40px var(--mono); color:var(--faint); letter-spacing:.2em; }
+  #empty h2 { font:600 16px var(--sans); color:var(--text); margin:14px 0 6px; }
+  #empty p { font:13px var(--sans); max-width:420px; margin:4px auto; }
+
+  /* ── Panel chi tiết + filmstrip (chữ ký của giao diện) ─────────── */
+  #detail { position:fixed; right:0; top:0; bottom:0; width:min(580px,92vw);
+            background:var(--surface); border-left:1px solid var(--line);
+            padding:14px 16px; overflow-y:auto; display:none; z-index:20;
+            box-shadow:-18px 0 40px #0009; }
+  #detail .head { display:flex; justify-content:space-between; align-items:baseline;
+                  margin-bottom:10px; gap:10px; }
+  #dTitle { font:600 15px var(--mono); color:var(--cyan); letter-spacing:.02em; }
+  #detail img.big { width:100%; border-radius:8px; border:1px solid var(--line); }
+  #dMeta { margin-top:8px; font:12px var(--mono); color:var(--muted); }
+  #dMeta b { color:var(--amber); font-weight:600; }
+  .eyebrow { font:700 10px var(--mono); letter-spacing:.18em; color:var(--faint);
+             text-transform:uppercase; margin:18px 0 6px; }
+  .film { background:#0c0b0e; border-radius:6px; padding:9px 6px; }
+  .film::before, .film::after { content:""; display:block; height:6px; margin:0 2px;
+      background-image:radial-gradient(#26242c 1.6px, transparent 1.7px);
+      background-size:14px 6px; background-position:center; }
+  .film::before { margin-bottom:5px; } .film::after { margin-top:5px; }
+  #strip { display:flex; gap:3px; overflow-x:auto; scrollbar-width:thin; }
+  #strip img { height:62px; border-radius:2px; cursor:pointer;
+               border:2px solid transparent; flex:0 0 auto; }
+  #strip img.cur { border-color:var(--amber); }
+  #detail .actions { margin-top:16px; display:flex; gap:8px; }
+
+  /* ── Zoom & Help ───────────────────────────────────────────────── */
   #zoom { position:fixed; inset:0; background:#000d; display:none;
           align-items:center; justify-content:center; z-index:30; }
-  #zoom img { max-width:92vw; max-height:92vh; border-radius:8px; }
-  #help { position:fixed; inset:0; background:#000c; display:none;
+  #zoom img { max-width:92vw; max-height:88vh; border-radius:8px; }
+  #zoom .tc { position:fixed; bottom:18px; font:13px var(--mono); color:var(--cyan); }
+  #help { position:fixed; inset:0; background:#000b; display:none;
           align-items:center; justify-content:center; z-index:40; }
-  #help .box { background:var(--panel); border:1px solid var(--border);
-               border-radius:12px; padding:22px 28px; max-width:520px; }
-  kbd { background:#252a35; border:1px solid var(--border); border-radius:4px;
-        padding:0 6px; font-size:12px; }
-  #help td { padding:3px 10px 3px 0; color:var(--dim); }
-  .hint { color:var(--dim); font-size:12px; }
+  #help .box { background:var(--surface); border:1px solid var(--line);
+               border-radius:12px; padding:20px 26px 24px; width:min(560px,92vw); }
+  #help h3 { font:600 14px var(--sans); margin-bottom:2px; }
+  #help .sub { font:11px var(--mono); color:var(--faint); letter-spacing:.1em;
+               margin-bottom:14px; }
+  #help table { width:100%; border-collapse:collapse; }
+  #help td { padding:4px 12px 4px 0; font:12.5px var(--sans); color:var(--muted); }
+  #help td:first-child, #help td:nth-child(3) { width:90px; }
 </style>
 </head>
 <body>
 <header>
-  <input id="q" placeholder="Nhập truy vấn (tiếng Anh cho M1)…  |  Ctrl+V để dán ảnh tìm kiếm" autocomplete="off">
-  <select id="mode"><option value="kis">KIS</option><option value="avs">AVS</option></select>
-  <button onclick="doSearch()">Tìm 🔍</button>
-  <button onclick="doFeedback()" title="Tìm lại theo các ảnh đã đánh dấu ✓/✗ (phím s/x)">↻ Feedback</button>
-  <button onclick="toggleHelp()">?</button>
+  <div class="brand"><div class="dot"></div>
+    <div><b>AIC·26</b><small>SEARCH DECK</small></div></div>
+  <div id="qwrap">
+    <input id="q" placeholder="Mô tả khoảnh khắc cần tìm… (tiếng Anh cho M1)" autocomplete="off" spellcheck="false">
+    <span class="hint"><kbd>/</kbd><kbd>Ctrl+V</kbd></span>
+  </div>
+  <div class="seg" id="mode" title="Chế độ tìm">
+    <span data-v="kis" class="on">KIS</span><span data-v="avs">AVS</span>
+  </div>
+  <button class="primary" onclick="doSearch()">Tìm</button>
+  <button onclick="doFeedback()" title="Tìm lại theo các khung đã đánh dấu (s/x)">↻ Feedback</button>
+  <button onclick="toggleHelp()" title="Phím tắt">?</button>
 </header>
-<div id="status"><span id="stCount">Sẵn sàng — nhấn <b>/</b> để tìm, <b>?</b> xem phím tắt</span>
-  <span id="stLat"></span><span id="stIdx"></span><span id="stFb"></span></div>
+
+<div id="status">
+  <span id="stCount">sẵn sàng</span>
+  <span id="stLat" class="tc"></span>
+  <span id="stFb" class="fb"></span>
+  <span id="stIdx" style="margin-left:auto"></span>
+</div>
+
+<div id="empty">
+  <div class="glyph">▮▮▮</div>
+  <h2>Chưa có kết quả nào trên deck</h2>
+  <p>Nhấn <kbd>/</kbd> và mô tả khoảnh khắc cần tìm, hoặc dán ảnh chụp màn hình
+     bằng <kbd>Ctrl+V</kbd> để tìm bằng hình (Video KIS).</p>
+  <p>Nhấn <kbd>?</kbd> để xem toàn bộ phím tắt.</p>
+</div>
 <div id="grid"></div>
 
 <div id="detail">
-  <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-    <b id="dTitle"></b><button onclick="closeDetail()">Đóng (Esc)</button></div>
-  <img class="big" id="dImg">
-  <div class="hint" id="dMeta" style="margin-top:6px"></div>
-  <div style="margin-top:12px"><b>Timeline</b> <span class="hint">(←→ duyệt, Enter chọn)</span></div>
-  <div id="strip"></div>
-  <div style="margin-top:14px">
-    <button onclick="submitSel()" style="border-color:var(--ok)">NỘP kết quả này (Ctrl+Enter)</button>
+  <div class="head">
+    <span id="dTitle"></span>
+    <button onclick="closeDetail()">Đóng <kbd>Esc</kbd></button>
+  </div>
+  <img class="big" id="dImg" alt="">
+  <div id="dMeta"></div>
+  <div class="eyebrow">Filmstrip · <kbd>←</kbd><kbd>→</kbd> duyệt</div>
+  <div class="film"><div id="strip"></div></div>
+  <div class="actions">
+    <button class="primary" onclick="submitSel()">⏺ Nộp kết quả này <kbd>Ctrl+Enter</kbd></button>
   </div>
 </div>
-<div id="zoom" onclick="this.style.display='none'"><img id="zImg"></div>
-<div id="help" onclick="toggleHelp()"><div class="box">
-  <h3 style="margin-bottom:10px">Phím tắt</h3>
+
+<div id="zoom" onclick="this.style.display='none'"><img id="zImg" alt=""><span class="tc" id="zTc"></span></div>
+
+<div id="help" onclick="toggleHelp()"><div class="box" onclick="event.stopPropagation()">
+  <h3>Phím tắt</h3>
+  <div class="sub">GIỮ TAY TRÊN BÀN PHÍM — CHUỘT LÀ ĐƯỜNG VÒNG</div>
   <table>
-    <tr><td><kbd>/</kbd></td><td>focus ô tìm kiếm</td><td><kbd>Esc</kbd></td><td>về lưới / đóng panel</td></tr>
-    <tr><td><kbd>←↑→↓</kbd></td><td>di chuyển chọn</td><td><kbd>Enter</kbd></td><td>mở chi tiết + timeline</td></tr>
-    <tr><td><kbd>Space</kbd></td><td>phóng to ảnh</td><td><kbd>v</kbd></td><td>mở video (khi có)</td></tr>
-    <tr><td><kbd>s</kbd></td><td>đánh dấu ✓ đúng hướng</td><td><kbd>x</kbd></td><td>đánh dấu ✗ sai</td></tr>
-    <tr><td><kbd>f</kbd></td><td>tìm tương tự ảnh đang chọn</td><td><kbd>Ctrl+V</kbd></td><td>dán ảnh → tìm ngay</td></tr>
-    <tr><td><kbd>Ctrl+Enter</kbd></td><td>nộp kết quả đang chọn</td><td><kbd>?</kbd></td><td>bảng này</td></tr>
+    <tr><td><kbd>/</kbd></td><td>tìm kiếm</td><td><kbd>Esc</kbd></td><td>về lưới / đóng</td></tr>
+    <tr><td><kbd>← ↑ → ↓</kbd></td><td>di chuyển chọn</td><td><kbd>Enter</kbd></td><td>chi tiết + filmstrip</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>phóng to ảnh</td><td><kbd>Ctrl+V</kbd></td><td>dán ảnh → tìm ngay</td></tr>
+    <tr><td><kbd>s</kbd></td><td>giữ (KEEP)</td><td><kbd>x</kbd></td><td>loại (DROP)</td></tr>
+    <tr><td><kbd>f</kbd></td><td>tìm tương tự ảnh chọn</td><td><kbd>Ctrl+Enter</kbd></td><td>nộp kết quả</td></tr>
   </table>
 </div></div>
 
 <script>
 const API = location.origin.startsWith('file') ? 'http://localhost:8000' : location.origin;
 let results = [], sel = -1, positives = new Set(), negatives = new Set();
-let stripEntries = [], stripSel = -1;
+let stripEntries = [], stripSel = -1, maxScore = 1;
 
 const $ = id => document.getElementById(id);
 const imgUrl = kf => `${API}/keyframe/${encodeURIComponent(kf)}/image`;
 const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const modeVal = () => document.querySelector('#mode .on').dataset.v;
+
+document.querySelectorAll('#mode span').forEach(el => el.onclick = () => {
+  document.querySelectorAll('#mode span').forEach(x => x.classList.remove('on'));
+  el.classList.add('on');
+});
 
 async function api(path, body) {
   const r = await fetch(API + path, body === undefined ? {} :
@@ -108,17 +218,17 @@ async function api(path, body) {
 }
 
 async function doSearch(imageB64 = null) {
-  const body = { top_k: 100, mode: $('mode').value };
+  const body = { top_k: 100, mode: modeVal() };
   if (imageB64) body.query_image_b64 = imageB64;
   else if ($('q').value.trim()) body.query_text = $('q').value.trim();
   else return;
   try {
     const data = await api('/search', body);
     results = data.results; sel = results.length ? 0 : -1;
-    $('stLat').textContent = `⏱ ${data.latency_ms} ms`;
+    $('stLat').textContent = `${data.latency_ms} ms`;
     render();
     $('q').blur();
-  } catch (e) { $('stCount').textContent = '⚠ ' + e.message; }
+  } catch (e) { $('stCount').innerHTML = `<span class="warn">⚠ ${e.message}</span>`; }
 }
 
 async function doFeedback() {
@@ -130,14 +240,19 @@ async function doFeedback() {
 }
 
 function render() {
+  $('empty').style.display = results.length ? 'none' : 'block';
   $('stCount').textContent = `${results.length} kết quả`;
-  $('stFb').textContent = (positives.size||negatives.size) ? `✓${positives.size} ✗${negatives.size}` : '';
+  $('stFb').textContent = (positives.size||negatives.size)
+    ? `KEEP ${positives.size} · DROP ${negatives.size}` : '';
+  maxScore = Math.max(...results.map(r => r.score), 0.001);
   $('grid').innerHTML = results.map((r, i) => `
     <div class="card ${i===sel?'sel':''} ${positives.has(r.keyframe_id)?'pos':''} ${negatives.has(r.keyframe_id)?'neg':''}"
          data-i="${i}" onclick="sel=${i};render()" ondblclick="openDetail()">
-      <img src="${imgUrl(r.keyframe_id)}" loading="lazy">
-      <span class="score">${r.score.toFixed(2)}</span>
-      <div class="cap"><span>${r.video_id}</span><span>${fmt(r.start_time)}–${fmt(r.end_time)}</span></div>
+      <span class="tag"></span>
+      <img src="${imgUrl(r.keyframe_id)}" loading="lazy" alt="">
+      <div class="meter"><i style="width:${Math.round(r.score/maxScore*100)}%"></i></div>
+      <div class="cap"><span>${r.video_id}</span>
+        <span class="tc">${fmt(r.start_time)}–${fmt(r.end_time)}</span></div>
     </div>`).join('');
   const c = document.querySelector('.card.sel');
   if (c) c.scrollIntoView({ block:'nearest' });
@@ -148,7 +263,7 @@ async function openDetail() {
   const r = results[sel];
   $('dTitle').textContent = r.keyframe_id;
   $('dImg').src = imgUrl(r.keyframe_id);
-  $('dMeta').textContent = `video ${r.video_id} · đoạn ${fmt(r.start_time)}–${fmt(r.end_time)} · score ${r.score}`;
+  $('dMeta').innerHTML = `video ${r.video_id} · đoạn <b>${fmt(r.start_time)}–${fmt(r.end_time)}</b> · score ${r.score}`;
   $('detail').style.display = 'block';
   const tl = await api(`/video/${encodeURIComponent(r.video_id)}/timeline?around=${encodeURIComponent(r.keyframe_id)}&window=20`);
   stripEntries = tl.entries;
@@ -158,7 +273,7 @@ async function openDetail() {
 
 function renderStrip() {
   $('strip').innerHTML = stripEntries.map((e, i) =>
-    `<img src="${imgUrl(e.keyframe_id)}" class="${i===stripSel?'cur':''}" title="${fmt(e.timestamp)}"
+    `<img src="${imgUrl(e.keyframe_id)}" class="${i===stripSel?'cur':''}" title="${fmt(e.timestamp)}" alt=""
           onclick="stripSel=${i};renderStrip();$('dImg').src='${imgUrl(e.keyframe_id)}'">`).join('');
   const cur = document.querySelector('#strip img.cur');
   if (cur) cur.scrollIntoView({ inline:'center', block:'nearest' });
@@ -171,7 +286,7 @@ function submitSel() {
   const r = results[sel];
   const kf = (stripSel >= 0 && $('detail').style.display === 'block')
     ? stripEntries[stripSel].keyframe_id : r.keyframe_id;
-  alert(`NỘP (M1 demo — M4 sẽ nối hệ thống BTC):\n${JSON.stringify(
+  alert(`NỘP (M1 demo — M4 nối hệ thống BTC):\n${JSON.stringify(
     { video_id: r.video_id, keyframe_id: kf, start_time: r.start_time, end_time: r.end_time }, null, 2)}`);
 }
 
@@ -182,7 +297,7 @@ window.addEventListener('paste', ev => {
       const reader = new FileReader();
       reader.onload = () => doSearch(reader.result.split(',')[1]);
       reader.readAsDataURL(item.getAsFile());
-      $('stCount').textContent = '🔍 Đang tìm bằng ảnh dán…';
+      $('stCount').textContent = 'đang tìm bằng ảnh dán…';
       ev.preventDefault(); return;
     }
   }
@@ -213,9 +328,10 @@ window.addEventListener('keydown', ev => {
     case 'ArrowUp':   sel = Math.max(sel-cols(), 0); render(); ev.preventDefault(); break;
     case 'Enter':
       if (ev.ctrlKey) submitSel(); else openDetail(); ev.preventDefault(); break;
-    case ' ':
-      $('zImg').src = imgUrl(detailOpen && stripSel>=0 ? stripEntries[stripSel].keyframe_id : r.keyframe_id);
-      $('zoom').style.display = 'flex'; ev.preventDefault(); break;
+    case ' ': {
+      const kf = detailOpen && stripSel>=0 ? stripEntries[stripSel].keyframe_id : r.keyframe_id;
+      $('zImg').src = imgUrl(kf); $('zTc').textContent = kf;
+      $('zoom').style.display = 'flex'; ev.preventDefault(); break; }
     case 's': positives.add(r.keyframe_id); negatives.delete(r.keyframe_id); render(); break;
     case 'x': negatives.add(r.keyframe_id); positives.delete(r.keyframe_id); render(); break;
     case 'f':
@@ -227,9 +343,9 @@ window.addEventListener('keydown', ev => {
   }
 });
 
-// ---- Khởi động: hiện trạng thái index ----
-api('/stats').then(s => { $('stIdx').textContent = `index: ${s.index_version} · ${s.n_keyframes} kf`; })
-  .catch(() => { $('stIdx').textContent = '⚠ backend chưa chạy?'; });
+// ---- Khởi động ----
+api('/stats').then(s => { $('stIdx').innerHTML = `<span class="live">●</span> ${s.index_version} · ${s.n_keyframes} kf · ${s.n_videos} video`; })
+  .catch(() => { $('stIdx').innerHTML = '<span class="warn">● backend chưa chạy</span>'; });
 </script>
 </body>
 </html>
