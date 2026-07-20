@@ -34,3 +34,6 @@ Thumbs.db
 # Tap kin cua N5 - khong commit
 eval/queries_held_out.jsonl
 eval/results/
+
+# Du lieu mock sinh tu dong
+backend/mockdata/
