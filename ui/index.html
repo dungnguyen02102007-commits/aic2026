@@ -29,14 +29,18 @@
           linear-gradient(transparent 0 31px, rgba(34,211,238,.025) 31px 32px) 0 0/100% 32px,
           linear-gradient(90deg, transparent 0 31px, rgba(34,211,238,.025) 31px 32px) 0 0/32px 100%,
           var(--bg); }
-  #fx i { position:absolute; width:60vmax; height:60vmax; border-radius:50%;
-          filter:blur(90px); opacity:.16; will-change:transform; }
-  #fx i:nth-child(1) { background:var(--neon); top:-25vmax; left:-15vmax;
+  /* blur được nướng sẵn thành gradient (không dùng filter:blur -> không vẽ lại mỗi frame);
+     animation chỉ translate -> GPU compose thuần, không đụng main thread khi scroll */
+  #fx i { position:absolute; width:64vmax; height:64vmax; border-radius:50%;
+          will-change:transform; }
+  #fx i:nth-child(1) { top:-25vmax; left:-15vmax;
+          background:radial-gradient(circle, var(--neon) 0%, transparent 62%); opacity:.14;
           animation:drift1 46s ease-in-out infinite alternate; }
-  #fx i:nth-child(2) { background:var(--blue); bottom:-30vmax; right:-18vmax;
-          animation:drift2 58s ease-in-out infinite alternate; opacity:.12; }
-  @keyframes drift1 { to { transform:translate(16vmax, 10vmax) scale(1.15); } }
-  @keyframes drift2 { to { transform:translate(-14vmax, -8vmax) scale(.9); } }
+  #fx i:nth-child(2) { bottom:-30vmax; right:-18vmax;
+          background:radial-gradient(circle, var(--blue) 0%, transparent 62%); opacity:.13;
+          animation:drift2 58s ease-in-out infinite alternate; }
+  @keyframes drift1 { to { transform:translate3d(14vmax, 9vmax, 0); } }
+  @keyframes drift2 { to { transform:translate3d(-12vmax, -7vmax, 0); } }
   @media (prefers-reduced-motion:reduce) { #fx i { animation:none; } }
   @media (prefers-reduced-motion:no-preference) {
     .card, button, .seg span { transition:border-color .12s, background .12s,
@@ -44,10 +48,10 @@
   }
 
   /* ── Header: thanh kính mờ ────────────────────────────────────── */
+  /* header dính: nền ĐỤC (không backdrop-filter) -> không blur lại nền động mỗi frame scroll */
   header { display:flex; gap:10px; align-items:center; padding:12px 16px;
            position:sticky; top:0; z-index:10;
-           background:rgba(10,14,21,.72); backdrop-filter:blur(14px);
-           border-bottom:1px solid var(--line); }
+           background:#0c1119; border-bottom:1px solid var(--line); }
   .brand { display:flex; align-items:center; gap:9px; margin-right:4px; user-select:none; }
   .brand .dot { width:10px; height:10px; background:var(--neon); border-radius:50%;
                 box-shadow:0 0 10px var(--neon-glow), 0 0 24px var(--neon-glow); }
@@ -83,7 +87,7 @@
   /* ── Status bus ───────────────────────────────────────────────── */
   #status { display:flex; gap:20px; align-items:center; padding:6px 16px;
             font:12px var(--mono); color:var(--muted); letter-spacing:.03em;
-            border-bottom:1px solid var(--line); background:rgba(15,21,31,.6); }
+            border-bottom:1px solid var(--line); background:#0d131d; }
   #status .live { color:var(--good); }
   #status .warn { color:var(--bad); }
   #status .tc { color:var(--neon); }
@@ -93,7 +97,8 @@
   #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
           gap:10px; padding:12px 16px 48px; }
   .card { position:relative; border:1px solid var(--line); border-radius:12px;
-          overflow:hidden; cursor:pointer; background:var(--surface); }
+          overflow:hidden; cursor:pointer; background:var(--surface);
+          content-visibility:auto; contain-intrinsic-size:180px 150px; }
   .card img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
   .card .meter { height:3px; background:var(--line); }
   .card .meter i { display:block; height:100%; background:var(--blue); }
@@ -121,9 +126,9 @@
   #empty p { font:13px var(--sans); max-width:440px; margin:4px auto; }
 
   /* ── Panel chi tiết + filmstrip ───────────────────────────────── */
+  /* panel cuộn nội dung -> nền đục để không blur lại khi cuộn trong panel */
   #detail { position:fixed; right:0; top:0; bottom:0; width:min(580px,92vw);
-            background:rgba(15,21,31,.92); backdrop-filter:blur(16px);
-            border-left:1px solid var(--line); padding:16px 18px;
+            background:#0e141e; border-left:1px solid var(--line); padding:16px 18px;
             overflow-y:auto; display:none; z-index:20;
             box-shadow:-24px 0 48px #0009; }
   #detail .head { display:flex; justify-content:space-between; align-items:baseline;
@@ -147,14 +152,12 @@
   #detail .actions { margin-top:18px; display:flex; gap:8px; }
 
   /* ── Zoom & Help ──────────────────────────────────────────────── */
-  #zoom { position:fixed; inset:0; background:rgba(4,7,12,.9);
-          backdrop-filter:blur(6px); display:none; align-items:center;
-          justify-content:center; z-index:30; }
+  #zoom { position:fixed; inset:0; background:rgba(4,7,12,.94);
+          display:none; align-items:center; justify-content:center; z-index:30; }
   #zoom img { max-width:92vw; max-height:88vh; border-radius:12px; }
   #zoom .tc { position:fixed; bottom:20px; font:13px var(--mono); color:var(--neon); }
-  #help { position:fixed; inset:0; background:rgba(4,7,12,.82);
-          backdrop-filter:blur(6px); display:none; align-items:center;
-          justify-content:center; z-index:40; }
+  #help { position:fixed; inset:0; background:rgba(4,7,12,.88);
+          display:none; align-items:center; justify-content:center; z-index:40; }
   #help .box { background:var(--surface); border:1px solid var(--line);
                border-radius:16px; padding:22px 28px 26px; width:min(560px,92vw);
                box-shadow:0 0 40px -10px var(--neon-glow); }
