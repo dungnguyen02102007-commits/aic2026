@@ -125,7 +125,9 @@ def summarize(tag, kis_ranks, avs_precisions, latencies, failures):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--api", default="http://localhost:8000")
+    # 127.0.0.1 thay vì localhost: trên Windows, localhost thử IPv6 trước
+    # rồi mới rơi về IPv4 -> cộng oan ~2 giây/request vào số đo latency
+    ap.add_argument("--api", default="http://127.0.0.1:8000")
     ap.add_argument("--queries", default="eval/queries.jsonl")
     ap.add_argument("--tag", required=True, help="tên cấu hình, vd: clip_only, with_rrf")
     ap.add_argument("--top-k", type=int, default=200)
