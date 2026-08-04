@@ -34,3 +34,7 @@ Thumbs.db
 # Tap kin cua N5 - khong commit
 eval/queries_held_out.jsonl
 eval/results/
+
+# Dataset BTC - TUYET DOI khong commit (Tuan Anh dung thu muc nay)
+dataset/
+docs/inventory_report.md
