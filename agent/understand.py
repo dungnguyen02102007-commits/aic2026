@@ -10,8 +10,18 @@ mà không tốn tiền API. Chất lượng thật nằm ở provider LLM + pro
 import json
 import os
 import re
+from pathlib import Path
 
 from agent.prompts import UNDERSTAND_FEWSHOT, UNDERSTAND_SYSTEM
+
+# Nạp .env ở gốc repo nếu có (pip install python-dotenv). Không có cũng chạy —
+# khi đó biến môi trường phải được đặt sẵn trong shell.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 REQUIRED_KEYS = {"search_text_en", "variants", "positives", "negatives",
                  "temporal", "cooccur", "filters", "task_type"}
@@ -35,8 +45,12 @@ def _call_llm(provider: str, query_vi: str, history: list[dict]) -> str:
         client = anthropic.Anthropic()
         resp = client.messages.create(
             model=os.environ.get("AIC_LLM_MODEL", "claude-sonnet-5"),
-            max_tokens=1024, system=UNDERSTAND_SYSTEM, messages=messages)
-        return resp.content[0].text
+            max_tokens=2048, system=UNDERSTAND_SYSTEM, messages=messages)
+        if resp.stop_reason == "refusal":
+            raise RuntimeError(f"Model từ chối trả lời: {resp.stop_details}")
+        # content là danh sách block (ThinkingBlock, TextBlock...) — các model
+        # đời mới bật thinking mặc định nên block[0] thường KHÔNG phải text.
+        return next(b.text for b in resp.content if b.type == "text")
 
     if provider == "openai":
         import openai
