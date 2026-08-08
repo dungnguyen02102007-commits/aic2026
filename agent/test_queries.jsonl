@@ -1,0 +1,20 @@
+{"q": "Tìm cảnh tôi đang uống cà phê trong quán có tường màu đỏ", "expect": {"task_type": "kis"}}
+{"q": "Tìm tất cả các cảnh có chó xuất hiện", "expect": {"task_type": "avs"}}
+{"q": "Tìm các cảnh lái xe vào ban đêm", "expect": {"task_type": "avs_or_kis"}}
+{"q": "Tìm phân cảnh tôi đánh rơi chìa khóa có móc gấu bông màu hồng khi đi qua quầy hoa quả", "expect": {"task_type": "kis", "cooccur": true}}
+{"q": "Tìm khoảnh khắc đang ăn kem bên bờ biển, phải thấy rõ cả kem và biển", "expect": {"task_type": "kis", "cooccur": true}}
+{"q": "Tất cả cảnh ăn đồ ăn nhanh trong nhà hàng, cảnh ăn ở nhà không tính", "expect": {"task_type": "avs", "has_negatives": true}}
+{"q": "Người đàn ông cởi mũ trước khi bước vào phòng", "expect": {"has_temporal": true}}
+{"q": "Cảnh người phụ nữ bước vào phòng rồi mới cởi mũ", "expect": {"has_temporal": true}}
+{"q": "Trong buổi tiệc, cậu bé áo đỏ thổi bao nhiêu cây nến?", "expect": {"task_type": "vqa"}}
+{"q": "Sau khi thổi nến, ai là người tặng quà cho cậu bé?", "expect": {"task_type": "vqa", "has_temporal": true}}
+{"q": "Tìm cảnh một người lính chì trong trung tâm thương mại, bên cạnh quần áo", "expect": {"task_type": "kis"}}
+{"q": "Tìm cảnh tôi nói chuyện với người phụ nữ trước quầy túi xách, một chiếc màu tím một chiếc màu trắng", "expect": {"task_type": "kis", "cooccur": true}}
+{"q": "Tất cả các cảnh người lớn hướng dẫn trẻ em trồng cây hoặc tưới hoa trong vườn", "expect": {"task_type": "avs"}}
+{"q": "Tìm đoạn tôi gặp một người bạn cũ vào tuần trước ở quán cà phê ngoài trời", "expect": {"task_type": "kis"}}
+{"q": "Cảnh đi chợ mua rau buổi sáng, không tính lúc đi siêu thị", "expect": {"has_negatives": true}}
+{"q": "Chiếc xe màu đỏ xuất hiện bao nhiêu lần trong video?", "expect": {"task_type": "vqa"}}
+{"q": "Tìm cảnh vừa cầm ô vừa dắt chó đi dưới mưa", "expect": {"cooccur": true}}
+{"q": "Tìm cảnh quay bảng hiệu tiệm phở có chữ màu vàng vào ban đêm", "expect": {"task_type": "kis"}}
+{"q": "Tất cả cảnh có người mặc áo dài trắng, trừ các cảnh trong đám cưới", "expect": {"task_type": "avs", "has_negatives": true}}
+{"q": "Tìm khoảnh khắc tôi trả tiền ở quầy thu ngân sau khi thử chiếc áo khoác màu xanh", "expect": {"has_temporal": true}}

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>AIC26 · Search Deck</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ── Tokens: cyan neon · clean · hiện đại ─────────────────────── */
+  :root {
+    --bg:#0a0e15; --surface:#0f151f; --raised:#141c29; --line:#1d2939;
+    --text:#e8eef6; --muted:#8494a8; --faint:#54627a;
+    --neon:#22d3ee;                 /* cyan neon — selection, focus, action */
+    --neon-soft:rgba(34,211,238,.14);
+    --neon-glow:rgba(34,211,238,.45);
+    --blue:#5b8cff;                 /* phụ trợ cho nền động */
+    --good:#34d399; --bad:#fb7185;
+    --mono:ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;
+    --sans:system-ui,'Segoe UI',Roboto,sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; }
+  html { color-scheme:dark; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 var(--sans); }
+  ::selection { background:var(--neon-soft); }
+  :focus-visible { outline:2px solid var(--neon); outline-offset:2px; border-radius:6px; }
+
+  /* ── Nền động: vệt sáng trôi chậm + lưới mờ ───────────────────── */
+  #fx { position:fixed; inset:0; z-index:-1; overflow:hidden;
+        background:
+          linear-gradient(transparent 0 31px, rgba(34,211,238,.025) 31px 32px) 0 0/100% 32px,
+          linear-gradient(90deg, transparent 0 31px, rgba(34,211,238,.025) 31px 32px) 0 0/32px 100%,
+          var(--bg); }
+  /* blur được nướng sẵn thành gradient (không dùng filter:blur -> không vẽ lại mỗi frame);
+     animation chỉ translate -> GPU compose thuần, không đụng main thread khi scroll */
+  #fx i { position:absolute; width:64vmax; height:64vmax; border-radius:50%;
+          will-change:transform; }
+  #fx i:nth-child(1) { top:-25vmax; left:-15vmax;
+          background:radial-gradient(circle, var(--neon) 0%, transparent 62%); opacity:.14;
+          animation:drift1 46s ease-in-out infinite alternate; }
+  #fx i:nth-child(2) { bottom:-30vmax; right:-18vmax;
+          background:radial-gradient(circle, var(--blue) 0%, transparent 62%); opacity:.13;
+          animation:drift2 58s ease-in-out infinite alternate; }
+  @keyframes drift1 { to { transform:translate3d(14vmax, 9vmax, 0); } }
+  @keyframes drift2 { to { transform:translate3d(-12vmax, -7vmax, 0); } }
+  @media (prefers-reduced-motion:reduce) { #fx i { animation:none; } }
+  @media (prefers-reduced-motion:no-preference) {
+    .card, button, .seg span { transition:border-color .12s, background .12s,
+                               opacity .12s, box-shadow .12s; }
+  }
+
+  /* ── Header: thanh kính mờ ────────────────────────────────────── */
+  /* header dính: nền ĐỤC (không backdrop-filter) -> không blur lại nền động mỗi frame scroll */
+  header { display:flex; gap:10px; align-items:center; padding:12px 16px;
+           position:sticky; top:0; z-index:10;
+           background:#0c1119; border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:9px; margin-right:4px; user-select:none; }
+  .brand .dot { width:10px; height:10px; background:var(--neon); border-radius:50%;
+                box-shadow:0 0 10px var(--neon-glow), 0 0 24px var(--neon-glow); }
+  .brand b { font:700 13px/1.1 var(--sans); letter-spacing:.08em; }
+  .brand small { display:block; font:10px/1.2 var(--mono); color:var(--neon);
+                 letter-spacing:.16em; opacity:.85; }
+  #qwrap { flex:1; position:relative; }
+  #q { width:100%; padding:10px 88px 10px 14px; font:15px var(--sans);
+       background:var(--raised); border:1px solid var(--line); border-radius:10px;
+       color:var(--text); }
+  #q::placeholder { color:var(--faint); }
+  #q:focus { border-color:var(--neon); outline:none;
+             box-shadow:0 0 0 3px var(--neon-soft); }
+  #qwrap .hint { position:absolute; right:10px; top:50%; translate:0 -50%;
+       display:flex; gap:4px; pointer-events:none; }
+  .seg { display:flex; background:var(--raised); border:1px solid var(--line);
+         border-radius:10px; padding:3px; gap:2px; }
+  .seg span { padding:6px 14px; cursor:pointer; font:600 12px var(--mono);
+              letter-spacing:.1em; color:var(--muted); border-radius:7px; }
+  .seg span.on { background:var(--neon); color:#04222b;
+                 box-shadow:0 0 12px var(--neon-glow); }
+  button { padding:9px 16px; background:var(--raised); color:var(--text);
+           border:1px solid var(--line); border-radius:10px; cursor:pointer;
+           font:600 13px var(--sans); }
+  button:hover { border-color:var(--neon); box-shadow:0 0 0 3px var(--neon-soft); }
+  button.primary { background:var(--neon); border-color:var(--neon); color:#04222b;
+                   box-shadow:0 0 16px var(--neon-glow); }
+  button.primary:hover { filter:brightness(1.1); }
+  kbd { font:11px var(--mono); background:rgba(255,255,255,.04);
+        border:1px solid var(--line); border-bottom-width:2px; border-radius:5px;
+        padding:1px 6px; color:var(--muted); }
+
+  /* ── Status bus ───────────────────────────────────────────────── */
+  #status { display:flex; gap:20px; align-items:center; padding:6px 16px;
+            font:12px var(--mono); color:var(--muted); letter-spacing:.03em;
+            border-bottom:1px solid var(--line); background:#0d131d; }
+  #status .live { color:var(--good); }
+  #status .warn { color:var(--bad); }
+  #status .tc { color:var(--neon); }
+  #status .fb { color:var(--neon); }
+
+  /* ── Lưới keyframe ────────────────────────────────────────────── */
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+          gap:10px; padding:12px 16px 48px; }
+  .card { position:relative; border:1px solid var(--line); border-radius:12px;
+          overflow:hidden; cursor:pointer; background:var(--surface);
+          content-visibility:auto; contain-intrinsic-size:180px 150px; }
+  .card img { width:100%; aspect-ratio:16/9; object-fit:cover; display:block; }
+  .card .meter { height:3px; background:var(--line); }
+  .card .meter i { display:block; height:100%; background:var(--blue); }
+  .card .cap { display:flex; justify-content:space-between; gap:6px;
+               padding:5px 8px 6px; font:10.5px var(--mono); color:var(--muted); }
+  .card .cap .tc { color:var(--neon); opacity:.9; }
+  .card:hover { border-color:var(--faint); }
+  .card.sel { border-color:var(--neon);
+              box-shadow:0 0 0 1px var(--neon), 0 0 18px -2px var(--neon-glow); }
+  .card.sel .meter i { background:var(--neon); }
+  .card .tag { position:absolute; top:0; left:0; font:700 9px/1 var(--mono);
+               letter-spacing:.1em; padding:4px 8px; border-radius:0 0 8px 0;
+               display:none; }
+  .card.pos .tag { display:block; background:var(--good); color:#052e1d; }
+  .card.pos .tag::after { content:"KEEP"; }
+  .card.neg { opacity:.38; }
+  .card.neg .tag { display:block; background:var(--bad); color:#3d0a14; }
+  .card.neg .tag::after { content:"DROP"; }
+
+  /* ── Trạng thái trống ─────────────────────────────────────────── */
+  #empty { padding:80px 20px; text-align:center; color:var(--muted); }
+  #empty .glyph { font:400 38px var(--mono); letter-spacing:.25em;
+                  color:var(--neon); text-shadow:0 0 18px var(--neon-glow); }
+  #empty h2 { font:600 17px var(--sans); color:var(--text); margin:16px 0 6px; }
+  #empty p { font:13px var(--sans); max-width:440px; margin:4px auto; }
+
+  /* ── Panel chi tiết + filmstrip ───────────────────────────────── */
+  /* panel cuộn nội dung -> nền đục để không blur lại khi cuộn trong panel */
+  #detail { position:fixed; right:0; top:0; bottom:0; width:min(580px,92vw);
+            background:#0e141e; border-left:1px solid var(--line); padding:16px 18px;
+            overflow-y:auto; display:none; z-index:20;
+            box-shadow:-24px 0 48px #0009; }
+  #detail .head { display:flex; justify-content:space-between; align-items:baseline;
+                  margin-bottom:12px; gap:10px; }
+  #dTitle { font:600 15px var(--mono); color:var(--neon); letter-spacing:.02em; }
+  #detail img.big { width:100%; border-radius:12px; border:1px solid var(--line); }
+  #dMeta { margin-top:10px; font:12px var(--mono); color:var(--muted); }
+  #dMeta b { color:var(--neon); font-weight:600; }
+  .eyebrow { font:700 10px var(--mono); letter-spacing:.2em; color:var(--faint);
+             text-transform:uppercase; margin:20px 0 8px; }
+  .film { background:#070a10; border:1px solid var(--line); border-radius:10px;
+          padding:9px 8px; }
+  .film::before, .film::after { content:""; display:block; height:6px; margin:0 2px;
+      background-image:radial-gradient(rgba(34,211,238,.25) 1.6px, transparent 1.7px);
+      background-size:14px 6px; background-position:center; }
+  .film::before { margin-bottom:6px; } .film::after { margin-top:6px; }
+  #strip { display:flex; gap:4px; overflow-x:auto; scrollbar-width:thin; }
+  #strip img { height:62px; border-radius:4px; cursor:pointer;
+               border:2px solid transparent; flex:0 0 auto; }
+  #strip img.cur { border-color:var(--neon); box-shadow:0 0 10px var(--neon-glow); }
+  #detail .actions { margin-top:18px; display:flex; gap:8px; }
+
+  /* ── Zoom & Help ──────────────────────────────────────────────── */
+  #zoom { position:fixed; inset:0; background:rgba(4,7,12,.94);
+          display:none; align-items:center; justify-content:center; z-index:30; }
+  #zoom img { max-width:92vw; max-height:88vh; border-radius:12px; }
+  #zoom .tc { position:fixed; bottom:20px; font:13px var(--mono); color:var(--neon); }
+  #help { position:fixed; inset:0; background:rgba(4,7,12,.88);
+          display:none; align-items:center; justify-content:center; z-index:40; }
+  #help .box { background:var(--surface); border:1px solid var(--line);
+               border-radius:16px; padding:22px 28px 26px; width:min(560px,92vw);
+               box-shadow:0 0 40px -10px var(--neon-glow); }
+  #help h3 { font:600 14px var(--sans); margin-bottom:2px; }
+  #help .sub { font:11px var(--mono); color:var(--neon); letter-spacing:.12em;
+               margin-bottom:16px; opacity:.8; }
+  #help table { width:100%; border-collapse:collapse; }
+  #help td { padding:5px 12px 5px 0; font:12.5px var(--sans); color:var(--muted); }
+  #help td:first-child, #help td:nth-child(3) { width:92px; }
+</style>
+</head>
+<body>
+<div id="fx" aria-hidden="true"><i></i><i></i></div>
+
+<header>
+  <div class="brand"><div class="dot"></div>
+    <div><b>AIC·26</b><small>SEARCH DECK</small></div></div>
+  <div id="qwrap">
+    <input id="q" placeholder="Mô tả khoảnh khắc cần tìm… (tiếng Anh cho M1)" autocomplete="off" spellcheck="false">
+    <span class="hint"><kbd>/</kbd><kbd>Ctrl+V</kbd></span>
+  </div>
+  <div class="seg" id="mode" title="Chế độ tìm">
+    <span data-v="kis" class="on">KIS</span><span data-v="avs">AVS</span>
+  </div>
+  <button class="primary" onclick="doSearch()">Tìm</button>
+  <button onclick="doFeedback()" title="Tìm lại theo các khung đã đánh dấu (s/x)">↻ Feedback</button>
+  <button onclick="toggleHelp()" title="Phím tắt">?</button>
+</header>
+
+<div id="status">
+  <span id="stCount">sẵn sàng</span>
+  <span id="stLat" class="tc"></span>
+  <span id="stFb" class="fb"></span>
+  <span id="stIdx" style="margin-left:auto"></span>
+</div>
+
+<div id="empty">
+  <div class="glyph">▮▮▮</div>
+  <h2>Chưa có kết quả nào trên deck</h2>
+  <p>Nhấn <kbd>/</kbd> và mô tả khoảnh khắc cần tìm, hoặc dán ảnh chụp màn hình
+     bằng <kbd>Ctrl+V</kbd> để tìm bằng hình (Video KIS).</p>
+  <p>Nhấn <kbd>?</kbd> để xem toàn bộ phím tắt.</p>
+</div>
+<div id="grid"></div>
+
+<div id="detail">
+  <div class="head">
+    <span id="dTitle"></span>
+    <button onclick="closeDetail()">Đóng <kbd>Esc</kbd></button>
+  </div>
+  <img class="big" id="dImg" alt="">
+  <div id="dMeta"></div>
+  <div class="eyebrow">Filmstrip · <kbd>←</kbd><kbd>→</kbd> duyệt</div>
+  <div class="film"><div id="strip"></div></div>
+  <div class="actions">
+    <button class="primary" onclick="submitSel()">⏺ Nộp kết quả này <kbd>Ctrl+Enter</kbd></button>
+  </div>
+</div>
+
+<div id="zoom" onclick="this.style.display='none'"><img id="zImg" alt=""><span class="tc" id="zTc"></span></div>
+
+<div id="help" onclick="toggleHelp()"><div class="box" onclick="event.stopPropagation()">
+  <h3>Phím tắt</h3>
+  <div class="sub">GIỮ TAY TRÊN BÀN PHÍM — CHUỘT LÀ ĐƯỜNG VÒNG</div>
+  <table>
+    <tr><td><kbd>/</kbd></td><td>tìm kiếm</td><td><kbd>Esc</kbd></td><td>về lưới / đóng</td></tr>
+    <tr><td><kbd>← ↑ → ↓</kbd></td><td>di chuyển chọn</td><td><kbd>Enter</kbd></td><td>chi tiết + filmstrip</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>phóng to ảnh</td><td><kbd>Ctrl+V</kbd></td><td>dán ảnh → tìm ngay</td></tr>
+    <tr><td><kbd>s</kbd></td><td>giữ (KEEP)</td><td><kbd>x</kbd></td><td>loại (DROP)</td></tr>
+    <tr><td><kbd>f</kbd></td><td>tìm tương tự ảnh chọn</td><td><kbd>Ctrl+Enter</kbd></td><td>nộp kết quả</td></tr>
+  </table>
+</div></div>
+
+<script>
+const API = location.origin.startsWith('file') ? 'http://localhost:8000' : location.origin;
+let results = [], sel = -1, positives = new Set(), negatives = new Set();
+let stripEntries = [], stripSel = -1, maxScore = 1;
+
+const $ = id => document.getElementById(id);
+const imgUrl = kf => `${API}/keyframe/${encodeURIComponent(kf)}/image`;
+const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+const modeVal = () => document.querySelector('#mode .on').dataset.v;
+
+document.querySelectorAll('#mode span').forEach(el => el.onclick = () => {
+  document.querySelectorAll('#mode span').forEach(x => x.classList.remove('on'));
+  el.classList.add('on');
+});
+
+async function api(path, body) {
+  const r = await fetch(API + path, body === undefined ? {} :
+    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
+  return r.json();
+}
+
+async function doSearch(imageB64 = null) {
+  const body = { top_k: 100, mode: modeVal() };
+  if (imageB64) body.query_image_b64 = imageB64;
+  else if ($('q').value.trim()) body.query_text = $('q').value.trim();
+  else return;
+  try {
+    const data = await api('/search', body);
+    results = data.results; sel = results.length ? 0 : -1;
+    $('stLat').textContent = `${data.latency_ms} ms`;
+    render();
+    $('q').blur();
+  } catch (e) { $('stCount').innerHTML = `<span class="warn">⚠ ${e.message}</span>`; }
+}
+
+async function doFeedback() {
+  if (!positives.size && !negatives.size) return;
+  const data = await api('/search/feedback', {
+    positive_keyframe_ids: [...positives], negative_keyframe_ids: [...negatives],
+    query_text: $('q').value.trim() || null, top_k: 100 });
+  results = data.results; sel = results.length ? 0 : -1; render();
+}
+
+function render() {
+  $('empty').style.display = results.length ? 'none' : 'block';
+  $('stCount').textContent = `${results.length} kết quả`;
+  $('stFb').textContent = (positives.size||negatives.size)
+    ? `KEEP ${positives.size} · DROP ${negatives.size}` : '';
+  maxScore = Math.max(...results.map(r => r.score), 0.001);
+  $('grid').innerHTML = results.map((r, i) => `
+    <div class="card ${i===sel?'sel':''} ${positives.has(r.keyframe_id)?'pos':''} ${negatives.has(r.keyframe_id)?'neg':''}"
+         data-i="${i}" onclick="sel=${i};render()" ondblclick="openDetail()">
+      <span class="tag"></span>
+      <img src="${imgUrl(r.keyframe_id)}" loading="lazy" alt="">
+      <div class="meter"><i style="width:${Math.round(r.score/maxScore*100)}%"></i></div>
+      <div class="cap"><span>${r.video_id}</span>
+        <span class="tc">${fmt(r.start_time)}–${fmt(r.end_time)}</span></div>
+    </div>`).join('');
+  const c = document.querySelector('.card.sel');
+  if (c) c.scrollIntoView({ block:'nearest' });
+}
+
+async function openDetail() {
+  if (sel < 0) return;
+  const r = results[sel];
+  $('dTitle').textContent = r.keyframe_id;
+  $('dImg').src = imgUrl(r.keyframe_id);
+  $('dMeta').innerHTML = `video ${r.video_id} · đoạn <b>${fmt(r.start_time)}–${fmt(r.end_time)}</b> · score ${r.score}`;
+  $('detail').style.display = 'block';
+  const tl = await api(`/video/${encodeURIComponent(r.video_id)}/timeline?around=${encodeURIComponent(r.keyframe_id)}&window=20`);
+  stripEntries = tl.entries;
+  stripSel = stripEntries.findIndex(e => e.keyframe_id === r.keyframe_id);
+  renderStrip();
+}
+
+function renderStrip() {
+  $('strip').innerHTML = stripEntries.map((e, i) =>
+    `<img src="${imgUrl(e.keyframe_id)}" class="${i===stripSel?'cur':''}" title="${fmt(e.timestamp)}" alt=""
+          onclick="stripSel=${i};renderStrip();$('dImg').src='${imgUrl(e.keyframe_id)}'">`).join('');
+  const cur = document.querySelector('#strip img.cur');
+  if (cur) cur.scrollIntoView({ inline:'center', block:'nearest' });
+}
+
+function closeDetail(){ $('detail').style.display = 'none'; }
+
+function submitSel() {
+  if (sel < 0) return;
+  const r = results[sel];
+  const kf = (stripSel >= 0 && $('detail').style.display === 'block')
+    ? stripEntries[stripSel].keyframe_id : r.keyframe_id;
+  alert(`NỘP (M1 demo — M4 nối hệ thống BTC):\n${JSON.stringify(
+    { video_id: r.video_id, keyframe_id: kf, start_time: r.start_time, end_time: r.end_time }, null, 2)}`);
+}
+
+// ---- Dán ảnh → tìm ngay (Video KIS) ----
+window.addEventListener('paste', ev => {
+  for (const item of ev.clipboardData.items) {
+    if (item.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => doSearch(reader.result.split(',')[1]);
+      reader.readAsDataURL(item.getAsFile());
+      $('stCount').textContent = 'đang tìm bằng ảnh dán…';
+      ev.preventDefault(); return;
+    }
+  }
+});
+
+// ---- Phím tắt ----
+function toggleHelp(){ $('help').style.display = $('help').style.display === 'flex' ? 'none' : 'flex'; }
+const cols = () => getComputedStyle($('grid')).gridTemplateColumns.split(' ').length;
+
+window.addEventListener('keydown', ev => {
+  const typing = document.activeElement === $('q');
+  if (ev.key === 'Enter' && typing) { doSearch(); return; }
+  if (ev.key === 'Escape') { $('q').blur(); closeDetail(); $('zoom').style.display='none'; $('help').style.display='none'; return; }
+  if (typing) return;
+  if (ev.key === '/') { ev.preventDefault(); $('q').focus(); $('q').select(); return; }
+  if (ev.key === '?') { toggleHelp(); return; }
+  if (sel < 0) return;
+  const r = results[sel];
+  const detailOpen = $('detail').style.display === 'block';
+  switch (ev.key) {
+    case 'ArrowRight':
+      if (detailOpen && stripEntries.length) { stripSel = Math.min(stripSel+1, stripEntries.length-1); renderStrip(); $('dImg').src = imgUrl(stripEntries[stripSel].keyframe_id); }
+      else { sel = Math.min(sel+1, results.length-1); render(); } ev.preventDefault(); break;
+    case 'ArrowLeft':
+      if (detailOpen && stripEntries.length) { stripSel = Math.max(stripSel-1, 0); renderStrip(); $('dImg').src = imgUrl(stripEntries[stripSel].keyframe_id); }
+      else { sel = Math.max(sel-1, 0); render(); } ev.preventDefault(); break;
+    case 'ArrowDown': sel = Math.min(sel+cols(), results.length-1); render(); ev.preventDefault(); break;
+    case 'ArrowUp':   sel = Math.max(sel-cols(), 0); render(); ev.preventDefault(); break;
+    case 'Enter':
+      if (ev.ctrlKey) submitSel(); else openDetail(); ev.preventDefault(); break;
+    case ' ': {
+      const kf = detailOpen && stripSel>=0 ? stripEntries[stripSel].keyframe_id : r.keyframe_id;
+      $('zImg').src = imgUrl(kf); $('zTc').textContent = kf;
+      $('zoom').style.display = 'flex'; ev.preventDefault(); break; }
+    case 's': positives.add(r.keyframe_id); negatives.delete(r.keyframe_id); render(); break;
+    case 'x': negatives.add(r.keyframe_id); positives.delete(r.keyframe_id); render(); break;
+    case 'f':
+      fetch(imgUrl(r.keyframe_id)).then(res => res.blob()).then(b => {
+        const reader = new FileReader();
+        reader.onload = () => doSearch(reader.result.split(',')[1]);
+        reader.readAsDataURL(b);
+      }); break;
+  }
+});
+
+// ---- Khởi động ----
+api('/stats').then(s => { $('stIdx').innerHTML = `<span class="live">●</span> ${s.index_version} · ${s.n_keyframes} kf · ${s.n_videos} video`; })
+  .catch(() => { $('stIdx').innerHTML = '<span class="warn">● backend chưa chạy</span>'; });
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# Dữ liệu & index — chia sẻ qua link, không qua git
+﻿# Dá»¯ liá»‡u & index â€” chia sáº» qua link, khĂ´ng qua git
 data/
 *.index
 *.npy
@@ -19,12 +19,13 @@ node_modules/
 dist/
 .next/
 
-# Bí mật — API key để trong .env, KHÔNG BAO GIỜ commit
+# BĂ­ máº­t â€” API key Ä‘á»ƒ trong .env, KHĂ”NG BAO GIá»œ commit
 .env
 .env.*
+*.env
 *.key
 
-# Log & tạm
+# Log & táº¡m
 *.log
 logs/
 *.jsonl.gz
@@ -34,6 +35,9 @@ Thumbs.db
 # Tap kin cua N5 - khong commit
 eval/queries_held_out.jsonl
 eval/results/
+
+# Du lieu mock sinh tu dong
+backend/mockdata/
 
 # Dataset BTC - TUYET DOI khong commit (Tuan Anh dung thu muc nay)
 dataset/
