@@ -38,3 +38,7 @@ eval/results/
 
 # Du lieu mock sinh tu dong
 backend/mockdata/
+
+# Dataset BTC - TUYET DOI khong commit (Tuan Anh dung thu muc nay)
+dataset/
+docs/inventory_report.md
