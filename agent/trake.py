@@ -189,6 +189,76 @@ def solve_alignment(video_path, center_frame: int, events: list[dict], encoder,
     return chosen, total, scores
 
 
+def rank_videos_by_events(hits_per_event, get_metadata, top_videos: int = 10):
+    """Giai đoạn 1 BẢN TỐT HƠN: xếp hạng video theo TỪNG khoảnh khắc, không
+    theo một mô tả tổng hợp.
+
+    Vì sao cần: đo thật trên 29 bản tin HTV9 cho thấy `video_search_en` tổng
+    hợp KHÔNG chọn được đúng video. Câu mô tả kiểu "bản tin có ... do người dẫn
+    nam trong trường quay trình bày" thì phần "bản tin / người dẫn / trường
+    quay" đúng với CẢ 29 video, lấn át phần nội dung riêng. Video đúng còn
+    không lọt nổi top 3.
+
+    Cách này hỏi riêng từng khoảnh khắc, rồi cộng lại: video chứa đủ cả N
+    khoảnh khắc mới lên đầu, còn video chỉ có cảnh trường quay chung thì không.
+
+    hits_per_event[j] = [(keyframe_id, score)] — kết quả tìm cho sự kiện thứ j.
+
+    Chuẩn hoá z theo TỪNG sự kiện trước khi cộng: mỗi câu mô tả có thang điểm
+    CLIP riêng (câu tả cảnh hiếm luôn cho điểm thấp hơn câu tả cảnh phổ thông),
+    cộng thô sẽ để câu "dễ ăn điểm" quyết định tất cả.
+    """
+    import statistics
+
+    n_ev = len(hits_per_event)
+    cao_nhat: dict[str, list[float]] = {}
+    tot_nhat_kf: dict[str, list] = {}
+
+    for j, hits in enumerate(hits_per_event):
+        for kf_id, score in hits:
+            meta = get_metadata(kf_id)
+            if not meta:
+                continue
+            v = meta["video_id"]
+            if v not in cao_nhat:
+                cao_nhat[v] = [None] * n_ev
+                tot_nhat_kf[v] = [None] * n_ev
+            if cao_nhat[v][j] is None or score > cao_nhat[v][j]:
+                cao_nhat[v][j] = score
+                tot_nhat_kf[v][j] = meta.get("frame_idx", 0)
+
+    if not cao_nhat:
+        return []
+
+    # Video nào không xuất hiện ở sự kiện j thì coi như điểm sàn của sự kiện đó
+    for j in range(n_ev):
+        co = [d[j] for d in cao_nhat.values() if d[j] is not None]
+        san = min(co) if co else 0.0
+        for d in cao_nhat.values():
+            if d[j] is None:
+                d[j] = san
+
+    # Chuẩn hoá z theo từng sự kiện
+    z: dict[str, list[float]] = {v: [0.0] * n_ev for v in cao_nhat}
+    for j in range(n_ev):
+        cot = [cao_nhat[v][j] for v in cao_nhat]
+        mu = statistics.mean(cot)
+        sd = statistics.pstdev(cot) or 1.0
+        for v in cao_nhat:
+            z[v][j] = (cao_nhat[v][j] - mu) / sd
+
+    ds = [{"video_id": v,
+           "score_cuoi": sum(z[v]),
+           "diem_tung_su_kien": [round(x, 4) for x in cao_nhat[v]],
+           "z_tung_su_kien": [round(x, 2) for x in z[v]],
+           "center_frames": tot_nhat_kf[v],
+           # tâm để giai đoạn 2 quét: lấy của sự kiện khớp mạnh nhất
+           "center_frame": tot_nhat_kf[v][max(range(n_ev), key=lambda j: z[v][j])]}
+          for v in cao_nhat]
+    ds.sort(key=lambda x: -x["score_cuoi"])
+    return ds[:top_videos]
+
+
 def solve_two_pass(video_path, n_frames: int, events: list[dict], encoder,
                    coarse_step: int = 30, fine_radius: int = 45,
                    fine_step: int = 2, min_gap: int = 1, size=(398, 224)):
