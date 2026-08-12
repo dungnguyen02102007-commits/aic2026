@@ -70,6 +70,8 @@ TRAKE là dạng duy nhất có **điểm thành phần**: khớp 3/4 khoảnh k
 **Luật 1 — LUÔN nộp đủ 100 câu, không bao giờ ít hơn.**
 Câu ở hạng 100 vẫn mang về 0.2 điểm. Nộp 20 câu rồi dừng là tự vứt điểm miễn phí. Không có hình phạt nào cho câu sai.
 
+> 📄 Chi tiết cách làm cho từng dạng đề, kèm ví dụ thật từ đội mình cho thấy chênh **gần gấp đôi** điểm (0.36 → 0.68): [`11-luon-nop-du-100-dap-an.md`](11-luon-nop-du-100-dap-an.md)
+
 **Luật 2 — Rerank đáng giá ngang retrieval.**
 Đẩy một đáp án từ hạng 6 lên hạng 1 được thêm 0.4 điểm — bằng đúng việc tìm mới được cả một câu đúng ở hạng 21. Nên khi hệ thống "đã tìm ra nhưng xếp thấp", đó là chỗ ăn điểm rẻ nhất.
 
