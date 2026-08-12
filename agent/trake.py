@@ -189,6 +189,56 @@ def solve_alignment(video_path, center_frame: int, events: list[dict], encoder,
     return chosen, total, scores
 
 
+def solve_two_pass(video_path, n_frames: int, events: list[dict], encoder,
+                   coarse_step: int = 30, fine_radius: int = 45,
+                   fine_step: int = 2, min_gap: int = 1, size=(398, 224)):
+    """Giai đoạn 2 đầy đủ, HAI LƯỢT — đây là hàm nên dùng khi thi.
+
+    Vì sao phải hai lượt: quét cả video 21 phút với bước nhỏ thì tốn quá nhiều
+    thời gian encode. Nhưng quét bước thô (vd 30 frame) thì chỉ chọn được frame
+    là bội số của 30, trong khi **cửa sổ đáp án của BTC thường dưới 10 frame** —
+    tức là gần như chắc chắn trượt dù đã tìm đúng cảnh.
+
+        Lượt 1 (thô)  : quét cả video, tìm ĐÚNG VÙNG của từng khoảnh khắc
+        Lượt 2 (tinh) : quét dày quanh từng vùng, chốt ĐÚNG FRAME
+
+    Lượt 2 gom tất cả cửa sổ vào một danh sách rồi chạy lại align_events trên
+    đó, thay vì lấy argmax riêng từng cửa sổ — để ràng buộc thứ tự vẫn đúng
+    ngay cả khi hai cửa sổ chồng lên nhau.
+
+    Trả về (frame_id đã chốt, tổng điểm, thông tin gỡ lỗi).
+    """
+    from indexing.extract_frames import extract_window, extract_windows
+
+    V_txt = encoder.encode_text([ev["search_en"] for ev in events])
+
+    # --- Lượt 1: quét thô cả video ---
+    tho_ids, tho_imgs = extract_window(video_path, n_frames // 2,
+                                       n_frames // 2 + 10, coarse_step, size)
+    if not tho_ids:
+        return None, NEG_INF, {}
+    S_tho = (V_txt @ encoder.encode_images(tho_imgs).T).tolist()
+    duong_tho, diem_tho = align_events(S_tho, min_gap)
+    if duong_tho is None:
+        return None, NEG_INF, {}
+    vung = [tho_ids[i] for i in duong_tho]
+
+    # --- Lượt 2: quét dày quanh từng vùng ---
+    tinh_ids, tinh_imgs = extract_windows(video_path, vung, fine_radius,
+                                          fine_step, size)
+    if not tinh_ids:
+        return vung, diem_tho, {"vung_tho": vung, "canh_bao": "lượt tinh rỗng"}
+    S_tinh = (V_txt @ encoder.encode_images(tinh_imgs).T).tolist()
+    chot, diem = pick_frames(S_tinh, tinh_ids, min_gap)
+    if chot is None:
+        return vung, diem_tho, {"vung_tho": vung, "canh_bao": "lượt tinh không xếp được"}
+
+    return chot, diem, {"vung_tho": vung, "diem_tho": diem_tho,
+                        "n_ung_vien_tho": len(tho_ids),
+                        "n_ung_vien_tinh": len(tinh_ids),
+                        "dich_chuyen": [c - v for c, v in zip(chot, vung)]}
+
+
 def pick_frames(events_scores, frame_ids, min_gap: int = 1):
     """Bọc align_events: nhận điểm + danh sách frame_id thật, trả frame_id đã chọn.
 

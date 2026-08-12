@@ -18,8 +18,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from indexing.extract_frames import (extract_window, iter_frames,  # noqa: E402
-                                     video_info)
+from indexing.extract_frames import (extract_window,  # noqa: E402
+                                     extract_windows, iter_frames, video_info)
 
 N_FRAME, FPS, W, H = 200, 25, 128, 64
 dat = truot = 0
@@ -101,6 +101,22 @@ try:
     # --- Biên: tâm sát đầu video thì không được trả chỉ số âm ---
     idxs, _ = extract_window(video, center_frame=5, radius=50, step=1)
     check("tâm sát đầu video -> không có chỉ số âm", idxs[0] == 0, f"đầu = {idxs[0]}")
+
+    # --- extract_windows: nhiều cửa sổ trong MỘT lượt giải mã ---
+    idxs, imgs = extract_windows(video, [30, 120], radius=10, step=2)
+    check("extract_windows lấy đúng cả hai cửa sổ",
+          idxs == [20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40,
+                   110, 112, 114, 116, 118, 120, 122, 124, 126, 128, 130],
+          f"{idxs}")
+    sai = [(i, round(r_trung_binh(a), 1))
+           for i, a in zip(idxs, imgs) if abs(r_trung_binh(a) - i) > 2]
+    check("extract_windows: nội dung khớp chỉ số", not sai, f"lệch: {sai[:3]}")
+
+    # Cửa sổ chồng nhau -> không được trả trùng, phải giữ thứ tự tăng dần
+    idxs, _ = extract_windows(video, [50, 60], radius=20, step=1)
+    check("cửa sổ chồng nhau: không trùng lặp, vẫn tăng dần",
+          idxs == sorted(set(idxs)) and idxs[0] == 30 and idxs[-1] == 80,
+          f"{len(idxs)} frame, {idxs[0]}..{idxs[-1]}")
 
     # --- ffmpeg thu nhỏ sẵn: chỉ số vẫn phải đúng ---
     idxs, imgs = extract_window(video, 100, 10, 2, size=(64, 32))
