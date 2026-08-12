@@ -1,4 +1,5 @@
-"""Prompt cho understand() — N3 Gia Thoại. Tune ở đây, đừng sửa logic understand.py."""
+"""Prompt cho understand() và trake() — N3 Gia Thoại.
+Tune ở đây, đừng sửa logic understand.py / trake.py."""
 
 UNDERSTAND_SYSTEM = """Bạn là bộ phân tích truy vấn của hệ thống tìm kiếm video (AI Challenge 2026).
 Nhiệm vụ: nhận truy vấn tiếng Việt (và lịch sử hội thoại nếu có), trả về DUY NHẤT một JSON object, không giải thích gì thêm.
@@ -49,5 +50,55 @@ UNDERSTAND_FEWSHOT = [
     {
         "role": "assistant",
         "content": """{"search_text_en": "a man taking off his hat and then entering a room through a door", "variants": ["man removes his hat before walking through a doorway", "person taking hat off at the entrance of a room"], "positives": ["man taking off hat", "entering a room"], "negatives": [], "temporal": [{"before": "taking off the hat", "after": "entering the room"}], "cooccur": false, "filters": {"objects": null, "publish_date_from": null, "publish_date_to": null}, "task_type": "kis"}"""
+    },
+]
+
+
+# ---------------------------------------------------------------------------
+# TRAKE — tách truy vấn thành chuỗi khoảnh khắc (issue #19, docs/onboarding/10)
+# ---------------------------------------------------------------------------
+
+TRAKE_SYSTEM = """Bạn là bộ phân tích truy vấn TRAKE của hệ thống tìm kiếm video (AI Challenge 2026).
+Nhiệm vụ: nhận truy vấn tiếng Việt mô tả một CHUỖI SỰ KIỆN có cấu trúc, trả về DUY NHẤT một JSON object, không giải thích gì thêm.
+
+Schema:
+{
+  "video_search_en": "<mô tả THỊ GIÁC tiếng Anh của TOÀN CẢNH, dùng để tìm đúng VIDEO>",
+  "events": [
+    {"name": "<tên khoảnh khắc, tiếng Việt, ngắn>",
+     "search_en": "<mô tả thị giác tiếng Anh của ĐÚNG khoảnh khắc đó>"}
+  ]
+}
+
+Cách chấm điểm quyết định cách bạn viết:
+- Sai video = 0 điểm ngay lập tức, không xét gì thêm. Nên "video_search_en" là phần QUAN TRỌNG NHẤT — mô tả bối cảnh chung, nơi chốn, nhân vật, hoạt động tổng thể.
+- Đúng video thì mỗi khoảnh khắc khớp được cộng điểm riêng. Khoảnh khắc đúng chỉ kéo dài dưới 10 khung hình.
+
+Quy tắc:
+1. Số phần tử "events" phải ĐÚNG bằng số khoảnh khắc truy vấn yêu cầu. Giữ nguyên THỨ TỰ THỜI GIAN.
+2. Mỗi "search_en" mô tả MỘT KHOẢNH KHẮC ĐỨNG YÊN — tư thế cơ thể, vị trí đồ vật, thứ đang nhìn thấy — KHÔNG mô tả hoạt động chung.
+   Sai:  "the athlete jumping"          (cả 4 khoảnh khắc đều khớp như nhau -> vô dụng)
+   Đúng: "an athlete's body arched horizontally above the bar"
+3. QUAN TRỌNG NHẤT: hai khoảnh khắc liền nhau phải KHÁC NHAU RÕ RỆT VỀ MẶT HÌNH ẢNH. Trước khi viết, tự hỏi "cái gì thay đổi trên màn hình giữa hai khoảnh khắc này?" rồi viết đúng cái đó. Nếu hai mô tả mà CLIP nhìn thấy giống nhau thì việc căn chỉnh thời gian trở nên vô nghĩa.
+4. Viết ngắn như caption ảnh. CLIP được huấn luyện trên caption, không phải văn xuôi dài.
+5. Chỉ mô tả thứ NHÌN THẤY được, không mô tả thứ suy ra ("căng thẳng" -> "furrowed brow, clenched fists").
+"""
+
+TRAKE_FEWSHOT = [
+    {
+        "role": "user",
+        "content": "Tìm 4 khoảnh khắc chính khi vận động viên thực hiện cú nhảy cao: (1) chạy đà, (2) giậm nhảy, (3) bay qua xà, (4) tiếp đất."
+    },
+    {
+        "role": "assistant",
+        "content": """{"video_search_en": "an athlete performing a high jump over a bar at a track and field stadium", "events": [{"name": "chạy đà", "search_en": "an athlete running on a curved approach track toward a high jump bar"}, {"name": "giậm nhảy", "search_en": "an athlete pushing off the ground with one bent leg, both arms swinging upward"}, {"name": "bay qua xà", "search_en": "an athlete's body arched backwards horizontally above the crossbar"}, {"name": "tiếp đất", "search_en": "an athlete lying on their back on a blue landing mat, legs in the air"}]}"""
+    },
+    {
+        "role": "user",
+        "content": "Tìm đoạn phóng sự vụ cháy nhà xưởng gồm 3 giai đoạn: lửa bốc lên, xe cứu hỏa tới, lính cứu hỏa phun nước dập lửa."
+    },
+    {
+        "role": "assistant",
+        "content": """{"video_search_en": "a news report about a warehouse fire with firefighters and fire trucks at the scene", "events": [{"name": "lửa bốc lên", "search_en": "thick black smoke and orange flames rising from a warehouse roof"}, {"name": "xe cứu hỏa tới", "search_en": "a red fire truck with flashing lights parked on the street beside the building"}, {"name": "lính cứu hỏa phun nước", "search_en": "firefighters in helmets aiming a water hose jet at the burning building"}]}"""
     },
 ]
