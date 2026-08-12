@@ -86,6 +86,29 @@ def extract_window(path, center_frame: int, radius: int = 150, step: int = 3,
     return idxs, imgs
 
 
+def extract_windows(path, centers, radius: int = 45, step: int = 2, size=None):
+    """Lấy NHIỀU cửa sổ trong MỘT lượt giải mã.
+
+    Dùng ở lượt tinh chỉnh của TRAKE: sau lượt quét thô ta có N vị trí thô,
+    cần quét dày quanh từng vị trí. Gọi extract_window() N lần sẽ giải mã lại
+    video N lần — hàm này chỉ giải mã một lần.
+
+    Trả về (frame_idx tăng dần, ảnh) — không trùng lặp kể cả khi các cửa sổ
+    chồng lên nhau.
+    """
+    cua_so = [(max(0, c - radius), c + radius) for c in sorted(centers)]
+    het = max(h for _, h in cua_so)
+    idxs, imgs = [], []
+    for fid, arr in iter_frames(path, 0, het, 1, size):
+        for lo, hi in cua_so:
+            if lo <= fid <= hi:
+                if (fid - lo) % step == 0:
+                    idxs.append(fid)
+                    imgs.append(arr)
+                break  # chặn thêm hai lần khi các cửa sổ chồng nhau
+    return idxs, imgs
+
+
 def to_pil(arr):
     from PIL import Image
     return Image.fromarray(arr)
