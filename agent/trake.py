@@ -117,6 +117,35 @@ def align_events(scores, min_gap: int = 1):
     return path, total
 
 
+def solve_alignment(video_path, center_frame: int, events: list[dict], encoder,
+                    radius: int = 150, step: int = 3, min_gap: int = 1,
+                    size=(224, 224)):
+    """Giai đoạn 2 trọn vẹn: từ video ứng viên -> N frame_id để nộp.
+
+    video_path    : file video gốc (BTC nói đây mới là dữ liệu thi chính thức)
+    center_frame  : vị trí thô do CLIP chỉ ra ở giai đoạn 1 (frame_idx của keyframe)
+    events        : [{name, search_en}] từ decompose()
+    encoder       : agent.clip_encoder.ClipEncoder
+    radius, step  : quét ±radius frame quanh tâm, lấy 1 frame mỗi `step` frame.
+                    Đoạn đáp án thường dưới 10 frame nên step <= 5 mới an toàn.
+
+    Trả về (danh sách frame_id, tổng điểm, ma trận điểm) — frame_id là con số
+    nộp cho BTC, KHÔNG phải vị trí trong danh sách ứng viên.
+    """
+    from indexing.extract_frames import extract_window
+
+    frame_ids, imgs = extract_window(video_path, center_frame, radius, step, size)
+    if not frame_ids:
+        return None, NEG_INF, None
+
+    V_img = encoder.encode_images(imgs)                        # (M, D)
+    V_txt = encoder.encode_text([ev["search_en"] for ev in events])  # (N, D)
+    scores = (V_txt @ V_img.T).tolist()                         # (N, M)
+
+    chosen, total = pick_frames(scores, frame_ids, min_gap)
+    return chosen, total, scores
+
+
 def pick_frames(events_scores, frame_ids, min_gap: int = 1):
     """Bọc align_events: nhận điểm + danh sách frame_id thật, trả frame_id đã chọn.
 
