@@ -8,6 +8,7 @@ Kiểm tra hai thứ dễ hỏng âm thầm:
   - /search có trả frame_idx không (thiếu là không nộp bài được — issue #20)
   - keyframe_id -> frame_idx -> ảnh có khớp nhau không (lệch 1 là sai hết)
 """
+import base64
 import os
 import sys
 from pathlib import Path
@@ -89,11 +90,29 @@ def chay_bo_test(client, ten_store, store):
     # encodeURIComponent, client nào khác cũng phải làm vậy.
     kf_url = quote(top["keyframe_id"], safe="")
     r = client.get(f"/keyframe/{kf_url}/image")
-    check("/keyframe ảnh mở được", r.status_code == 200 and len(r.content) > 500,
-          f"{len(r.content)} byte" if r.status_code == 200 else r.text[:80])
+    anh_that = r.content if r.status_code == 200 else b""
+    check("/keyframe ảnh mở được", r.status_code == 200 and len(anh_that) > 500,
+          f"{len(anh_that)} byte" if r.status_code == 200 else r.text[:80])
 
     r = client.get("/keyframe/KHONG_TON_TAI%23000001/image")
     check("/keyframe id sai -> 404", r.status_code == 404)
+
+    # --- Tìm bằng ẢNH (issue #5, nửa còn lại) ---
+    # Dùng chính ảnh keyframe vừa lấy làm truy vấn.
+    img_b64 = base64.b64encode(anh_that).decode()
+    r = client.post("/search", json={"query_image_b64": img_b64, "top_k": 5})
+    check("/search bằng ảnh 200", r.status_code == 200, r.text[:120])
+    if r.status_code == 200:
+        img_res = r.json()["results"]
+        check("/search bằng ảnh có kết quả + frame_idx",
+              len(img_res) > 0
+              and all(isinstance(s.get("frame_idx"), int) for s in img_res),
+              f"{len(img_res)} segment")
+
+    r = client.post("/search", json={"query_image_b64": "khong-phai-base64-hop-le",
+                                     "top_k": 5})
+    check("/search ảnh hỏng -> báo lỗi, không sập",
+          r.status_code >= 400, f"HTTP {r.status_code}")
 
     # --- Truy vấn rỗng phải báo lỗi rõ ràng ---
     r = client.post("/search", json={"top_k": 5})

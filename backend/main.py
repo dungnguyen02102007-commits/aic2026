@@ -113,8 +113,17 @@ def search(req: SearchRequest):
         filter_ids = store.keyframe_ids_for_videos(req.filters.video_ids)
 
     if req.query_image_b64:
-        img = base64.b64decode(req.query_image_b64)
-        hits = store.search_image(img, top_k=req.top_k * 3, filter_ids=filter_ids)
+        # UI cho phép Ctrl+V dán ảnh -> người dùng dán nhầm chữ là chuyện thường.
+        # Phải trả 422 có thông báo, không được để sập 500.
+        try:
+            img = base64.b64decode(req.query_image_b64, validate=True)
+        except Exception:  # noqa: BLE001 — mọi lỗi base64 đều là lỗi đầu vào
+            raise HTTPException(422, "query_image_b64 không phải base64 hợp lệ")
+        try:
+            hits = store.search_image(img, top_k=req.top_k * 3,
+                                      filter_ids=filter_ids)
+        except Exception as e:  # noqa: BLE001 — PIL/torch ném nhiều loại lỗi khác nhau
+            raise HTTPException(422, f"Không đọc được ảnh truy vấn: {e}")
     elif req.query_text:
         hits = store.search_text(req.query_text, top_k=req.top_k * 3,
                                  filter_ids=filter_ids)
