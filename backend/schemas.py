@@ -21,7 +21,9 @@ class SearchRequest(BaseModel):
     query_image_b64: Optional[str] = None
     filters: Filters = Field(default_factory=Filters)
     top_k: int = 100
-    mode: str = "kis"  # "kis" | "avs"
+    # Vòng sơ tuyển chỉ có kis | qa | trake (docs/onboarding/10).
+    # "avs" giữ lại cho vòng sau, hiện không dùng.
+    mode: str = "kis"
 
 
 class FeedbackRequest(BaseModel):
@@ -34,6 +36,10 @@ class FeedbackRequest(BaseModel):
 class SearchResult(BaseModel):
     video_id: str
     keyframe_id: str
+    # frame_idx = CON SỐ NỘP CHO BTC (chỉ số khung hình trong video gốc).
+    # BTC chấm đúng/sai bằng `frame_idx ∈ [s, e]`, KHÔNG dùng giây.
+    # start_time/end_time chỉ để UI tua video. Xem docs/onboarding/10.
+    frame_idx: int
     start_time: float
     end_time: float
     score: float
@@ -48,6 +54,7 @@ class SearchResponse(BaseModel):
 
 class TimelineEntry(BaseModel):
     keyframe_id: str
+    frame_idx: int
     timestamp: float
 
 

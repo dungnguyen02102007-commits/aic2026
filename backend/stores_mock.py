@@ -32,6 +32,9 @@ _SCENES = [
 ]
 
 
+FPS = 25.0  # giả lập video 25 khung/giây
+
+
 class MockStore:
     def __init__(self):
         self.keyframes = []  # list[dict]
@@ -40,15 +43,20 @@ class MockStore:
             video_id = f"L01_V{v:03d}"
             for i in range(12):
                 caption = _SCENES[(v * 5 + i) % len(_SCENES)]
+                n = i + 1  # số thứ tự keyframe — ĐẾM TỪ 1, đúng chuẩn cột n của BTC
+                ts = round(i * 10.0 + random.uniform(0, 3), 1)
                 self.keyframes.append({
-                    "keyframe_id": f"{video_id}#{i * 25:06d}",
+                    "keyframe_id": f"{video_id}#{n:06d}",
                     "video_id": video_id,
-                    "timestamp": round(i * 10.0 + random.uniform(0, 3), 1),
+                    "n": n,
+                    # frame_idx = con số nộp cho BTC (docs/onboarding/10)
+                    "frame_idx": int(round(ts * FPS)),
+                    "timestamp": ts,
                     "caption": caption,
                 })
         self.by_id = {k["keyframe_id"]: k for k in self.keyframes}
 
-    # --- API giống indexing/stores.py thật ---
+    # --- API chung của mọi store (xem backend/stores_faiss.py) ---
 
     def search_text(self, query: str, top_k: int = 100, filter_ids=None):
         qwords = set(query.lower().split())
@@ -79,6 +87,18 @@ class MockStore:
 
     def get_metadata(self, keyframe_id: str):
         return self.by_id.get(keyframe_id)
+
+    def keyframe_ids_for_videos(self, video_ids):
+        wanted = set(video_ids)
+        return [k["keyframe_id"] for k in self.keyframes if k["video_id"] in wanted]
+
+    def stats(self):
+        return {"index_version": "v0_mock", "n_keyframes": len(self.keyframes),
+                "n_videos": len({k["video_id"] for k in self.keyframes})}
+
+    def keyframe_image_path(self, keyframe_id: str):
+        p = THUMB_DIR / f"{keyframe_id.replace('#', '_')}.jpg"
+        return p if p.exists() else None
 
     def _pool(self, filter_ids):
         if filter_ids is None:
