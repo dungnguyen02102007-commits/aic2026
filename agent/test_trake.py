@@ -11,7 +11,8 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from agent.trake import NEG_INF, align_events, decompose, pick_frames  # noqa: E402
+from agent.trake import (NEG_INF, align_events, decompose,  # noqa: E402
+                         pick_frames, rank_videos)
 
 dat = truot = 0
 
@@ -78,6 +79,46 @@ frame_ids = [100, 250, 400, 550, 700]
 fids, _ = pick_frames(S, frame_ids)
 check("pick_frames trả frame_id thật, không phải vị trí", fids == [100, 400, 700],
       f"{fids}")
+
+# ===========================================================================
+# A2. rank_videos — giai đoạn 1: chọn VIDEO ứng viên
+# ===========================================================================
+print("\n=== A2. Xếp hạng video ứng viên (offline) ===")
+
+META = {
+    "V1#000001": {"video_id": "V1", "frame_idx": 100},
+    "V1#000002": {"video_id": "V1", "frame_idx": 200},
+    "V1#000003": {"video_id": "V1", "frame_idx": 300},
+    "V2#000001": {"video_id": "V2", "frame_idx": 500},
+    "V3#000001": {"video_id": "V3", "frame_idx": 900},
+}
+
+# V1 khớp vừa phải ở 3 chỗ; V2 khớp mạnh hơn nhưng chỉ 1 chỗ
+hits = [("V2#000001", 0.40), ("V1#000002", 0.38), ("V1#000001", 0.36),
+        ("V1#000003", 0.35), ("V3#000001", 0.20)]
+ds = rank_videos(hits, META.get)
+check("gộp keyframe theo video", [v["video_id"] for v in ds] == ["V2", "V1", "V3"]
+      or [v["video_id"] for v in ds][:2] == ["V1", "V2"],
+      f"{[(v['video_id'], round(v['score_cuoi'], 3)) for v in ds]}")
+check("đếm đúng số keyframe khớp mỗi video",
+      {v["video_id"]: v["n_hits"] for v in ds} == {"V1": 3, "V2": 1, "V3": 1})
+v1 = next(v for v in ds if v["video_id"] == "V1")
+check("center_frame lấy của keyframe điểm cao nhất trong video",
+      v1["center_frame"] == 200 and v1["best_keyframe_id"] == "V1#000002",
+      f"center={v1['center_frame']} kf={v1['best_keyframe_id']}")
+
+# Thưởng nhiều-hit phải ĐỦ NHỎ để không lật ngược một video khớp mạnh rõ rệt
+hits_manh = [("V2#000001", 0.90), ("V1#000001", 0.30), ("V1#000002", 0.30),
+             ("V1#000003", 0.30)]
+ds2 = rank_videos(hits_manh, META.get)
+check("thưởng nhiều-hit không lấn át video khớp mạnh",
+      ds2[0]["video_id"] == "V2",
+      f"{[(v['video_id'], round(v['score_cuoi'], 3)) for v in ds2]}")
+
+check("top_videos cắt đúng số lượng", len(rank_videos(hits, META.get, 2)) == 2)
+check("keyframe không có metadata thì bỏ qua, không sập",
+      len(rank_videos([("KHONG_CO#000001", 0.9)] + hits, META.get)) == 3)
+
 
 # ===========================================================================
 # B + C. decompose: tách truy vấn, và đo độ tương phản giữa các khoảnh khắc
