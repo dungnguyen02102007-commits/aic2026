@@ -12,7 +12,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from agent.trake import (NEG_INF, align_events, decompose,  # noqa: E402
-                         pick_frames, rank_videos)
+                         pick_frames, rank_videos, rank_videos_by_events)
 
 dat = truot = 0
 
@@ -118,6 +118,57 @@ check("thưởng nhiều-hit không lấn át video khớp mạnh",
 check("top_videos cắt đúng số lượng", len(rank_videos(hits, META.get, 2)) == 2)
 check("keyframe không có metadata thì bỏ qua, không sập",
       len(rank_videos([("KHONG_CO#000001", 0.9)] + hits, META.get)) == 3)
+
+
+# ---------------------------------------------------------------------------
+# rank_videos_by_events — bản dùng khi thi
+# ---------------------------------------------------------------------------
+print("\n=== A3. Xếp hạng video theo TỪNG khoảnh khắc ===")
+
+M2 = {f"{v}#{f}": {"video_id": v, "frame_idx": f}
+      for v in ("V1", "V2", "V3") for f in (10, 20, 30)}
+
+# V1 khớp đều cả 3 khoảnh khắc; V2 chỉ khớp mạnh 1 cái; V3 không khớp gì
+hits_ev = [
+    [("V1#10", 0.50), ("V2#10", 0.48), ("V3#10", 0.40)],
+    [("V1#20", 0.30), ("V2#20", 0.10), ("V3#20", 0.12)],
+    [("V1#30", 0.30), ("V2#30", 0.10), ("V3#30", 0.11)],
+]
+ds = rank_videos_by_events(hits_ev, M2.get)
+check("video khớp đủ 3 khoảnh khắc lên đầu", ds[0]["video_id"] == "V1",
+      f"{[(v['video_id'], round(v['score_cuoi'], 2)) for v in ds]}")
+check("center_frame lấy của khoảnh khắc khớp mạnh nhất",
+      ds[0]["center_frame"] in (10, 20, 30), f"{ds[0]['center_frame']}")
+check("giữ điểm từng khoảnh khắc để gỡ lỗi",
+      len(ds[0]["diem_tung_su_kien"]) == 3 and len(ds[0]["z_tung_su_kien"]) == 3)
+
+# Chuẩn hoá z: một khoảnh khắc có THANG ĐIỂM lớn bất thường không được
+# quyết định tất cả. Cộng thô thì V2 thắng, chuẩn hoá z thì V1 thắng.
+hits_lech = [
+    [("V1#10", 0.50), ("V2#10", 2.00), ("V3#10", 0.40)],  # thang điểm to
+    [("V1#20", 0.30), ("V2#20", 0.05), ("V3#20", 0.10)],
+    [("V1#30", 0.30), ("V2#30", 0.05), ("V3#30", 0.10)],
+]
+tong_tho = {v: sum(h[i][1] for h in hits_lech)
+            for i, v in enumerate(("V1", "V2", "V3"))}
+check("cộng thô sẽ chọn NHẦM (bằng chứng cần chuẩn hoá z)",
+      max(tong_tho, key=tong_tho.get) == "V2",
+      f"tổng thô: {  {k: round(x, 2) for k, x in tong_tho.items()} }")
+ds = rank_videos_by_events(hits_lech, M2.get)
+check("chuẩn hoá z chọn ĐÚNG video khớp đều", ds[0]["video_id"] == "V1",
+      f"{[(v['video_id'], round(v['score_cuoi'], 2)) for v in ds]}")
+
+# Video vắng mặt ở một khoảnh khắc -> lấy điểm sàn, không được sập
+thieu = [
+    [("V1#10", 0.50), ("V2#10", 0.48)],
+    [("V1#20", 0.30)],                    # V2 không xuất hiện
+    [("V1#30", 0.30), ("V2#30", 0.10)],
+]
+ds = rank_videos_by_events(thieu, M2.get)
+check("video vắng ở một khoảnh khắc vẫn xếp được, không sập",
+      len(ds) == 2 and ds[0]["video_id"] == "V1",
+      f"{[v['video_id'] for v in ds]}")
+check("danh sách hits rỗng -> trả rỗng", rank_videos_by_events([], M2.get) == [])
 
 
 # ===========================================================================
