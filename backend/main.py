@@ -3,11 +3,16 @@
 Chạy:  uvicorn backend.main:app --reload --port 8000
 UI:    http://localhost:8000  (serve ui/index.html)
 
-Tuần 1 (M1): chạy trên MockStore. Khi có dữ liệu thật (25/07):
-thay `from backend.stores_mock import MockStore` bằng store thật của N1
-(cùng chữ ký hàm) — các endpoint giữ nguyên.
+Chọn store bằng biến môi trường AIC_STORE:
+
+    (mặc định)  mock   — dữ liệu giả, không cần index, dùng để dev UI
+                faiss  — index CLIP thật, cần thêm AIC_INDEX_PATH / AIC_IDS_PATH
+                         / AIC_DB_PATH (xem backend/stores_faiss.py)
+
+Mọi store có cùng chữ ký hàm nên file này không phụ thuộc vào loại store.
 """
 import base64
+import os
 import time
 from pathlib import Path
 
@@ -17,17 +22,31 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from backend.schemas import (FeedbackRequest, SearchRequest, SearchResponse,
                              SearchResult, TimelineEntry, TimelineResponse)
-from backend.stores_mock import THUMB_DIR, MockStore, generate_thumbnails
 
 SEGMENT_GAP_SEC = 10.0  # keyframe cùng video cách nhau <= ngưỡng này thì gộp 1 segment
-INDEX_VERSION = "v0_mock"
 
-app = FastAPI(title="AIC2026 Retrieval API", version="0.1")
+app = FastAPI(title="AIC2026 Retrieval API", version="0.2")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
                    allow_headers=["*"])
 
-store = MockStore()
-generate_thumbnails(store)
+
+def _make_store():
+    kind = os.environ.get("AIC_STORE", "mock").lower()
+    if kind == "faiss":
+        from backend.stores_faiss import from_env
+        s = from_env()
+        print(f"[store] faiss — {s.index.ntotal} vector, {s.dim} chiều")
+        return s
+    if kind != "mock":
+        raise RuntimeError(f"AIC_STORE không hợp lệ: {kind} (chỉ mock|faiss)")
+    from backend.stores_mock import MockStore, generate_thumbnails
+    s = MockStore()
+    generate_thumbnails(s)
+    print(f"[store] mock — {len(s.keyframes)} keyframe giả")
+    return s
+
+
+store = _make_store()
 
 
 def group_segments(hits: list[tuple[str, float]], mode: str) -> list[SearchResult]:
@@ -52,13 +71,15 @@ def group_segments(hits: list[tuple[str, float]], mode: str) -> list[SearchResul
                 if cur:
                     segments.append(cur)
                 cur = {"video_id": video_id, "start": t, "end": t,
-                       "score": score, "best_kf": meta["keyframe_id"], "count": 1}
+                       "score": score, "best_kf": meta["keyframe_id"],
+                       "best_frame": meta.get("frame_idx", 0), "count": 1}
             else:
                 cur["end"] = t
                 cur["count"] += 1
                 if score > cur["score"]:
                     cur["score"] = score
                     cur["best_kf"] = meta["keyframe_id"]
+                    cur["best_frame"] = meta.get("frame_idx", 0)
         if cur:
             segments.append(cur)
 
@@ -73,7 +94,10 @@ def group_segments(hits: list[tuple[str, float]], mode: str) -> list[SearchResul
         segments = deduped
 
     segments.sort(key=lambda s: -s["score"])
+    # frame_idx lấy của keyframe điểm cao nhất trong segment — đó chính là
+    # khung hình sẽ nộp cho BTC (docs/onboarding/10, mục 2).
     return [SearchResult(video_id=s["video_id"], keyframe_id=s["best_kf"],
+                         frame_idx=s["best_frame"],
                          start_time=round(max(0.0, s["start"] - 2), 1),
                          end_time=round(s["end"] + 2, 1),
                          score=round(s["score"], 4),
@@ -86,8 +110,7 @@ def search(req: SearchRequest):
     t0 = time.perf_counter()
     filter_ids = None
     if req.filters.video_ids:
-        filter_ids = [k["keyframe_id"] for k in store.keyframes
-                      if k["video_id"] in set(req.filters.video_ids)]
+        filter_ids = store.keyframe_ids_for_videos(req.filters.video_ids)
 
     if req.query_image_b64:
         img = base64.b64decode(req.query_image_b64)
@@ -128,16 +151,18 @@ def timeline(video_id: str, around: str | None = None, window: int = 30):
         raise HTTPException(404, f"Không có video {video_id}")
     return TimelineResponse(video_id=video_id,
                             entries=[TimelineEntry(keyframe_id=k["keyframe_id"],
+                                                   frame_idx=k.get("frame_idx", 0),
                                                    timestamp=k["timestamp"])
                                      for k in kfs])
 
 
 @app.get("/keyframe/{keyframe_id}/image")
 def keyframe_image(keyframe_id: str, size: str = "thumb"):
-    path = THUMB_DIR / f"{keyframe_id.replace('#', '_')}.jpg"
-    if not path.exists():
+    path = store.keyframe_image_path(keyframe_id)
+    if not path:
         raise HTTPException(404, f"Không có ảnh {keyframe_id}")
-    return FileResponse(path, media_type="image/jpeg")
+    media = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+    return FileResponse(path, media_type=media)
 
 
 # --- Agent endpoints: N3 implement ở M3-M4, tạm stub 501 ---
@@ -163,8 +188,7 @@ def health():
 
 @app.get("/stats")
 def stats():
-    return {"index_version": INDEX_VERSION, "n_keyframes": len(store.keyframes),
-            "n_videos": len({k['video_id'] for k in store.keyframes})}
+    return store.stats()
 
 
 # --- Serve UI (N4) ---

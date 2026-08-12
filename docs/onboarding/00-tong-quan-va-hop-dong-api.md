@@ -33,8 +33,13 @@ Nguyên tắc vàng: **mọi thứ nặng làm offline; online chỉ tra cứu +
 
 Mọi ID và thời gian thống nhất:
 - `video_id`: string, đúng theo tên BTC phát (vd `"L01_V001"`).
-- `keyframe_id`: string, `"{video_id}#{frame_index}"`.
-- Thời gian: giây (float), không dùng chuỗi "hh:mm:ss" trong API (UI tự format khi hiển thị).
+- `keyframe_id`: string, `"{video_id}#{n:06d}"` — `n` là **cột `n` của map-keyframes CSV, ĐẾM TỪ 1**, khớp tên file ảnh keyframe. Không phải chỉ số khung hình.
+- `frame_idx`: int — **chỉ số khung hình trong video gốc. ĐÂY là con số nộp cho BTC.** Lấy từ cột `frame_idx` của map-keyframes CSV.
+- Thời gian: giây (float), không dùng chuỗi "hh:mm:ss" trong API (UI tự format khi hiển thị). **Giây chỉ để tua video, KHÔNG dùng để nộp bài.**
+
+> ⚠️ Phân biệt `n` và `frame_idx`: keyframe thứ 3 của một video có `n = 3` nhưng `frame_idx` có thể là 750. Nhầm hai cái này là nộp sai toàn bộ. Xem `docs/onboarding/10`.
+
+> ⚠️ `keyframe_id` chứa ký tự `#` — client gọi API **phải** mã hoá thành `%23` (`encodeURIComponent` trong JS, `urllib.parse.quote` trong Python). Không mã hoá thì trình duyệt cắt phần sau `#` thành fragment và server nhận thiếu đường dẫn.
 
 ### 3.1 POST /search — tìm kiếm chính (KIS/AVS)
 
@@ -51,15 +56,16 @@ Mọi ID và thời gian thống nhất:
     "channel": null
   },
   "top_k": 100,
-  "mode": "kis"                               // "kis" | "avs" (avs sẽ khử trùng lặp mạnh hơn)
+  "mode": "kis"                               // vòng sơ tuyển: "kis" | "qa" | "trake" (docs 10)
 }
 // Response
 {
   "results": [
     {
       "video_id": "L01_V001",
-      "keyframe_id": "L01_V001#004521",
-      "start_time": 751.2, "end_time": 765.4,   // biên segment sau khi gộp
+      "keyframe_id": "L01_V001#000042",         // n đếm từ 1, khớp tên file ảnh
+      "frame_idx": 4521,                          // CON SỐ NỘP CHO BTC
+      "start_time": 751.2, "end_time": 765.4,   // biên segment sau khi gộp, chỉ để tua video
       "score": 0.83,                              // điểm đã fusion, chỉ dùng để XẾP HẠNG
       "signals": {"clip": 0.31, "bm25": 12.4},   // debug
       "reason": null                              // N3 điền sau khi rerank, N2 để null
@@ -68,6 +74,8 @@ Mọi ID và thời gian thống nhất:
   "latency_ms": 87
 }
 ```
+
+Khi segment gộp nhiều keyframe, `keyframe_id` và `frame_idx` là của keyframe **điểm cao nhất** trong segment — đó là khung hình sẽ nộp.
 
 ### 3.2 POST /search/feedback — relevance feedback (KISC / average query expansion)
 

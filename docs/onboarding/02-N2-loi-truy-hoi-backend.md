@@ -34,16 +34,38 @@ score(kf) = Σ_channels 1 / (60 + rank_channel(kf))
 ### 2.2 Gộp keyframe → segment (temporal grouping)
 - Sau fusion lấy top ~1000 keyframe. Nhóm các keyframe **cùng video và cách nhau < T giây** (bắt đầu với T=10, N5 sẽ tune) thành 1 segment.
 - Điểm segment = max điểm keyframe thành viên (+ bonus nhỏ nếu nhiều keyframe cùng khớp, vd `max + 0.1*log(count)`).
-- `start_time/end_time` = min/max timestamp thành viên, nới mỗi bên 2–3 giây.
+- `start_time/end_time` = min/max timestamp thành viên, nới mỗi bên 2–3 giây. **Chỉ để UI tua video, KHÔNG dùng nộp bài.**
+- `frame_idx` của segment = `frame_idx` của keyframe **điểm cao nhất** — đó là khung hình nộp cho BTC (`docs/onboarding/10`).
 - Đây là bước biến "frame khớp" thành "khoảnh khắc" đúng yêu cầu đề bài.
 
-### 2.3 Chế độ AVS: khử trùng lặp & đa dạng hóa
-- `mode=avs`: sau khi gộp segment, các segment có embedding đại diện quá giống nhau (cosine > 0.92) trong CÙNG video → giữ 1 đại diện. Giữa các video thì giữ hết (AVS cần quét diện rộng).
-- Trả ranked list dài (top_k đến 1000) — format nộp AVS cần nhiều kết quả.
+### 2.3 ~~Chế độ AVS~~ (hoãn — không có ở vòng sơ tuyển)
+Vòng sơ tuyển chỉ có **Textual KIS / Q&A / TRAKE** (`docs/onboarding/10`). Code `mode="avs"` giữ nguyên trong `main.py` phòng vòng sau, nhưng **ngừng đầu tư**.
 
 ### 2.4 Filters
 - `filters.objects`: tra bảng objects trong SQLite → tập keyframe_id hợp lệ → truyền `filter_ids` xuống `search_vector/search_text` (FAISS `IDSelector`).
 - `filters.publish_date/channel/video_ids`: lọc từ metadata DB trước, đưa tập id vào search. LUÔN lọc-trước-tìm-sau (pre-filter), không tìm xong mới lọc (mất recall).
+
+### 2.5 Chạy backend với index thật
+
+`backend/main.py` chọn store bằng biến môi trường, không phải sửa code:
+
+```powershell
+$env:AIC_STORE="faiss"
+$env:AIC_INDEX_PATH="D:\AIC2026\outputs\clip_flat.faiss"
+$env:AIC_IDS_PATH="D:\AIC2026\outputs\ids.json"
+$env:AIC_DB_PATH="D:\AIC2026\data\metadata.db"
+$env:AIC_KEYFRAMES_DIR="D:\AIC2026\data\keyframes"
+python -m uvicorn backend.main:app --port 8000
+```
+
+Bỏ hết biến này thì chạy `MockStore` như cũ (dev UI không cần index).
+
+**Dev khi chưa tải index thật về máy:**
+```powershell
+python -m indexing.make_fake_index    # dựng index CLIP nhỏ từ caption mock
+python backend/test_api.py            # 29 phép thử trên cả 2 store
+```
+`make_fake_index.py` encode caption của MockStore bằng **chính model CLIP thật**, nên tìm kiếm ngữ nghĩa hoạt động thật trên máy — gõ "news anchor" ra đúng cảnh người dẫn chương trình.
 
 ## Phần 3 — Phục vụ vòng lặp KISC (mốc M3–M4)
 
