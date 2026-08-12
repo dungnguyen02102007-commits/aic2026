@@ -51,7 +51,20 @@ def main():
     ap.add_argument("--no-variants", action="store_true",
                     help="chỉ dùng search_text_en, bỏ biến thể — để đo xem "
                          "biến thể có giúp gì không")
+    ap.add_argument("--cache", default="eval/results/understand_cache.json",
+                    help="lưu/dùng lại bản dịch của understand(). BẮT BUỘC khi "
+                         "so sánh hai cấu hình: understand() gọi LLM nên mỗi "
+                         "lần dịch một khác, không khoá lại thì chênh lệch đo "
+                         "được là nhiễu dịch thuật chứ không phải hiệu quả thật")
+    ap.add_argument("--refresh-cache", action="store_true",
+                    help="dịch lại từ đầu, ghi đè cache (dùng khi vừa sửa prompt)")
     args = ap.parse_args()
+
+    cache_path = Path(args.cache)
+    cache = {}
+    if cache_path.exists() and not args.refresh_cache:
+        cache = json.loads(cache_path.read_text(encoding="utf-8"))
+        print(f"Dùng lại {len(cache)} bản dịch từ {cache_path}")
 
     idir = Path(args.index)
     ten = next(idir.glob("*.faiss")).stem
@@ -74,7 +87,11 @@ def main():
         if q.get("type") != "kis":
             continue
         t0 = time.time()
-        r = understand(q["query_vi"])
+        if q["qid"] in cache:
+            r = cache[q["qid"]]
+        else:
+            r = understand(q["query_vi"])
+            cache[q["qid"]] = r
         cau = [r["search_text_en"]]
         if not args.no_variants:
             cau += r.get("variants", [])[:3]
@@ -106,7 +123,11 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         for b in bai_nop:
             f.write(json.dumps(b, ensure_ascii=False) + "\n")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(cache, ensure_ascii=False, indent=2),
+                          encoding="utf-8")
     print(f"\n{len(bai_nop)} bài nộp -> {out}")
+    print(f"{len(cache)} bản dịch -> {cache_path}")
 
 
 if __name__ == "__main__":
