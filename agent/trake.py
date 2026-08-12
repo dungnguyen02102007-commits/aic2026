@@ -117,6 +117,49 @@ def align_events(scores, min_gap: int = 1):
     return path, total
 
 
+def rank_videos(hits, get_metadata, top_videos: int = 10,
+                thuong_nhieu_hit: float = 0.02):
+    """Giai đoạn 1: gộp kết quả CLIP theo VIDEO, xếp hạng video ứng viên.
+
+    hits: [(keyframe_id, score)] trả về từ store.search_text(video_search_en).
+
+    Vì sao gộp theo video chứ không lấy thẳng top keyframe: TRAKE chấm **sai
+    video là 0 điểm ngay**, nên việc chọn đúng video quan trọng hơn hẳn việc
+    chọn đúng frame. Một truy vấn TRAKE mô tả cả chuỗi sự kiện trải dài theo
+    thời gian, nên video đúng thường có NHIỀU keyframe cùng khớp — đó là tín
+    hiệu thật, không phải trùng hợp. `thuong_nhieu_hit` thưởng nhẹ cho điều đó,
+    đủ nhỏ để không lấn át một video khớp mạnh ở một chỗ.
+
+    Trả về [{video_id, center_frame, best_keyframe_id, score, n_hits}] —
+    `center_frame` là tâm để giai đoạn 2 quét frame dày xung quanh.
+    """
+    import math
+
+    theo_video: dict[str, dict] = {}
+    for kf_id, score in hits:
+        meta = get_metadata(kf_id)
+        if not meta:
+            continue
+        v = meta["video_id"]
+        cur = theo_video.get(v)
+        if cur is None:
+            theo_video[v] = {"video_id": v, "score": score, "n_hits": 1,
+                             "best_keyframe_id": kf_id,
+                             "center_frame": meta.get("frame_idx", 0)}
+        else:
+            cur["n_hits"] += 1
+            if score > cur["score"]:
+                cur["score"] = score
+                cur["best_keyframe_id"] = kf_id
+                cur["center_frame"] = meta.get("frame_idx", 0)
+
+    ds = list(theo_video.values())
+    for v in ds:
+        v["score_cuoi"] = v["score"] + thuong_nhieu_hit * math.log1p(v["n_hits"])
+    ds.sort(key=lambda v: -v["score_cuoi"])
+    return ds[:top_videos]
+
+
 def solve_alignment(video_path, center_frame: int, events: list[dict], encoder,
                     radius: int = 150, step: int = 3, min_gap: int = 1,
                     size=(224, 224)):
