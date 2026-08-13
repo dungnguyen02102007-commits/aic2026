@@ -58,7 +58,21 @@ def main():
                          "được là nhiễu dịch thuật chứ không phải hiệu quả thật")
     ap.add_argument("--refresh-cache", action="store_true",
                     help="dịch lại từ đầu, ghi đè cache (dùng khi vừa sửa prompt)")
+    ap.add_argument("--map", help="thư mục map-keyframes. BẮT BUỘC khi index "
+                                  "dùng ID theo `n` (index từ CLIPFeatures của "
+                                  "BTC) — phải đổi n sang frame_idx mới nộp được")
     args = ap.parse_args()
+
+    # ID trong index có hai kiểu:
+    #   "<video>#<frame_idx>"  — index tự dựng từ video (build_index_video.py)
+    #   "<video>#<n>"          — index từ CLIPFeatures BTC (build_index_clipfeatures)
+    # Kiểu thứ hai PHẢI đổi sang frame_idx, nếu không nộp sai toàn bộ mà
+    # không có lỗi nào báo ra.
+    mk = None
+    if args.map:
+        from indexing.map_keyframes import MapKeyframes
+        mk = MapKeyframes(args.map)
+        print(f"Đổi n -> frame_idx bằng map-keyframes ({len(mk.cac_video())} video)")
 
     cache_path = Path(args.cache)
     cache = {}
@@ -103,7 +117,13 @@ def main():
             if args.max_per_video and dem_video.get(v, 0) >= args.max_per_video:
                 continue
             dem_video[v] = dem_video.get(v, 0) + 1
-            answers.append({"video_id": v, "frame_id": int(f)})
+            fid = int(f)
+            if mk is not None:
+                try:
+                    fid = mk.frame_idx(v, fid)  # số sau # là `n`, đổi sang frame_idx
+                except (KeyError, FileNotFoundError):
+                    continue  # không tra được thì bỏ, đừng nộp số bịa
+            answers.append({"video_id": v, "frame_id": fid})
             if len(answers) >= MAX_NOP:
                 break
 
