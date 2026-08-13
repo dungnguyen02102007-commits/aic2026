@@ -86,6 +86,53 @@ def extract_window(path, center_frame: int, radius: int = 150, step: int = 3,
     return idxs, imgs
 
 
+def iter_frames_chon(path, start_frame: int, end_frame: int, step: int = 1,
+                     size=None):
+    """Như iter_frames nhưng để FFMPEG LỌC, chỉ truyền về frame thực sự cần.
+
+    `iter_frames` truyền MỌI frame từ đầu video qua ống rồi mới lọc trong
+    Python. Muốn lấy frame 22000 ở 720p thì phải truyền ~60 GB dữ liệu —
+    chậm không chịu nổi. Bộ lọc `select` của ffmpeg giải mã như cũ nhưng
+    chỉ xuất ra frame nằm trong khoảng, nên phần truyền gần như bằng 0.
+
+    Chỉ số frame vẫn CHÍNH XÁC TUYỆT ĐỐI: `n` trong bộ lọc select là bộ đếm
+    frame của bộ giải mã, đếm từ 0 — cùng quy ước với iter_frames. Với
+    `-vsync 0` ffmpeg xuất đúng các frame được chọn, đúng thứ tự, nên chỉ số
+    tính được chứ không phải đếm mò. Xem indexing/test_extract_frames.py.
+    """
+    import imageio_ffmpeg as ff
+
+    lo, hi = max(0, start_frame), end_frame
+    # dấu phẩy trong hàm của bộ lọc phải escape, vì ffmpeg dùng phẩy để nối bộ lọc
+    chon = f"between(n\\,{lo}\\,{hi})"
+    if step > 1:
+        chon += f"*not(mod(n-{lo}\\,{step}))"
+    vf = [f"select='{chon}'"]
+    if size:
+        vf.append(f"scale={size[0]}:{size[1]}")
+
+    reader = ff.read_frames(str(path),
+                            output_params=["-vf", ",".join(vf), "-vsync", "0"])
+    meta = next(reader)
+    w, h = size if size else meta["size"]
+    try:
+        for i, raw in enumerate(reader):
+            yield lo + i * step, np.frombuffer(raw, dtype=np.uint8).reshape(h, w, 3)
+    finally:
+        reader.close()
+
+
+def extract_window_nhanh(path, center_frame: int, radius: int = 90,
+                         step: int = 45, size=None):
+    """extract_window nhưng dùng bộ lọc của ffmpeg — nhanh hơn nhiều ở full-res."""
+    lo = max(0, center_frame - radius)
+    idxs, imgs = [], []
+    for fid, arr in iter_frames_chon(path, lo, center_frame + radius, step, size):
+        idxs.append(fid)
+        imgs.append(arr)
+    return idxs, imgs
+
+
 def extract_windows(path, centers, radius: int = 45, step: int = 2, size=None):
     """Lấy NHIỀU cửa sổ trong MỘT lượt giải mã.
 
