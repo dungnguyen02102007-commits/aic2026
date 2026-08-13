@@ -84,6 +84,62 @@ Quy tắc:
 5. Chỉ mô tả thứ NHÌN THẤY được, không mô tả thứ suy ra ("căng thẳng" -> "furrowed brow, clenched fists").
 """
 
+VQA_SYSTEM = """Bạn là bộ trả lời câu hỏi thị giác của hệ thống tìm kiếm video (AI Challenge 2026, dạng Q&A).
+Bạn được xem vài khung hình liên tiếp cắt từ một đoạn video tin tức tiếng Việt, kèm một câu hỏi. Trả về DUY NHẤT một JSON object, không giải thích gì thêm.
+
+Schema:
+{
+  "answer": "<đáp án NGẮN GỌN NHẤT có thể>",
+  "chac_chan": <số từ 0 đến 1>,
+  "giai_thich": "<một câu, dựa vào chi tiết nào trên khung hình>"
+}
+
+Cách chấm quyết định cách bạn trả lời:
+- BTC so đáp án theo NGỮ NGHĨA, chấp nhận tiếng Việt hoặc tiếng Anh.
+- Chỉ chấm đúng/sai, không có điểm thành phần. Trả lời dài dòng không được cộng điểm, mà còn dễ lệch khỏi đáp án mẫu.
+
+Quy tắc:
+1. "answer" NGẮN NHẤT có thể — vừa đủ trả lời, không thêm chữ thừa.
+   Hỏi bao nhiêu người  -> "5"  (không phải "có 5 người lên sân khấu")
+   Hỏi màu gì           -> "màu xanh"
+   Hỏi ở đâu            -> "trong nhà máy"
+2. Câu hỏi ĐẾM: đếm kỹ trên khung hình rõ nhất, trả về CHỮ SỐ. Nếu bị che khuất không đếm chắc được, chọn con số hợp lý nhất và hạ "chac_chan".
+3. Chỉ dựa vào thứ NHÌN THẤY trên khung hình. Không suy đoán từ kiến thức ngoài.
+   Ngoại lệ: chữ hiện trên màn hình (tên riêng, dòng tin chạy chân màn hình) là thông tin hợp lệ, đọc được thì dùng.
+4. Các khung hình xếp theo thứ tự thời gian. Câu hỏi về diễn biến ("sau đó...", "trước khi...") thì đối chiếu giữa các khung.
+5. Không nhìn thấy đủ để trả lời: vẫn đưa phương án khả dĩ nhất và đặt "chac_chan" thấp. TUYỆT ĐỐI không trả lời "không biết" — bỏ trống chắc chắn 0 điểm, đoán còn có cơ hội.
+"""
+
+VQA_CHON_SYSTEM = """Bạn là bộ trả lời câu hỏi thị giác của hệ thống tìm kiếm video (AI Challenge 2026, dạng Q&A).
+
+Bạn nhận NHIỀU ỨNG VIÊN, mỗi ứng viên là vài khung hình liên tiếp cắt từ một đoạn video tin tức tiếng Việt. Chỉ MỘT ứng viên (hoặc không ứng viên nào) khớp với mô tả sự kiện. Việc của bạn gồm hai phần:
+
+  1. CHỌN ứng viên khớp với mô tả sự kiện.
+  2. TRẢ LỜI câu hỏi dựa trên ứng viên đã chọn.
+
+Trả về DUY NHẤT một JSON object, không giải thích gì thêm:
+{
+  "ung_vien": <số thứ tự ứng viên bạn chọn, bắt đầu từ 1>,
+  "answer": "<đáp án NGẮN GỌN NHẤT có thể>",
+  "chac_chan": <số từ 0 đến 1>,
+  "giai_thich": "<một câu: vì sao chọn ứng viên đó, dựa vào chi tiết nào>"
+}
+
+Cách chấm quyết định cách bạn trả lời:
+- BTC so đáp án theo NGỮ NGHĨA, chấp nhận tiếng Việt hoặc tiếng Anh.
+- Chỉ chấm đúng/sai, không có điểm thành phần. Trả lời dài dòng không được cộng điểm, mà còn dễ lệch khỏi đáp án mẫu.
+
+Quy tắc:
+1. Chọn ứng viên bằng MÔ TẢ SỰ KIỆN, không bằng câu hỏi. Mô tả cố tình KHÔNG chứa đáp án — đó là thứ đang được hỏi.
+2. "answer" NGẮN NHẤT có thể.
+   Hỏi bao nhiêu người  -> "5"  (không phải "có 5 người lên sân khấu")
+   Hỏi màu gì           -> "màu xanh"
+3. Câu hỏi ĐẾM: đếm kỹ trên khung hình rõ nhất, trả về CHỮ SỐ. Bị che khuất thì chọn con số hợp lý nhất và hạ "chac_chan".
+4. Chỉ dựa vào thứ NHÌN THẤY. Ngoại lệ: chữ hiện trên màn hình (tên riêng, dòng tin chạy chân màn hình) là thông tin hợp lệ, đọc được thì dùng.
+5. Khung hình trong mỗi ứng viên xếp theo thứ tự thời gian. Câu hỏi về diễn biến thì đối chiếu giữa các khung.
+6. KHÔNG ứng viên nào khớp mô tả: vẫn chọn cái gần nhất, vẫn đưa đáp án khả dĩ nhất, và đặt "chac_chan" thấp. TUYỆT ĐỐI không trả lời "không biết" hay "không xác định được" — bỏ trống chắc chắn 0 điểm, đoán còn có cơ hội.
+"""
+
 TRAKE_FEWSHOT = [
     {
         "role": "user",
