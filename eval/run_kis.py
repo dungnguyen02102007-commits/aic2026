@@ -48,6 +48,15 @@ def main():
     ap.add_argument("--max-per-video", type=int, default=0,
                     help="0 = không giới hạn. Đặt >0 để ép đa dạng video "
                          "(đánh đổi: bớt cơ hội trúng khi đã đúng video)")
+    ap.add_argument("--uu-tien-video", type=int, default=0,
+                    help="0 = tắt. ĐÃ ĐO LÀ TỆ HƠN — giữ lại để khỏi thử lại. "
+                         "Xếp lại theo video (gom điểm keyframe theo video rồi "
+                         "nộp theo thứ tự video) cho kết quả kém hẳn: "
+                         "gốc 0.553 | 20 video x 5kf 0.400 | 10x10 0.318 | "
+                         "5x20 0.247. R@1 tụt từ 0.294 xuống 0.059 ở mọi biến "
+                         "thể. Lý do: tổng điểm RRF theo video thiên vị video "
+                         "DÀI có nhiều keyframe khớp lờ mờ, hơn video ngắn có "
+                         "một chỗ khớp mạnh.")
     ap.add_argument("--no-variants", action="store_true",
                     help="chỉ dùng search_text_en, bỏ biến thể — để đo xem "
                          "biến thể có giúp gì không")
@@ -110,6 +119,24 @@ def main():
         if not args.no_variants:
             cau += r.get("variants", [])[:3]
         hits = rrf([tim(c) for c in cau])
+
+        if args.uu_tien_video:
+            # Gom điểm theo video: điểm video = tổng điểm RRF của các keyframe
+            # thuộc nó. Video có NHIỀU keyframe cùng khớp thì mạnh hơn video
+            # chỉ khớp tình cờ một chỗ.
+            diem_video = {}
+            for kf, d in hits:
+                v = kf.split("#")[0]
+                diem_video[v] = diem_video.get(v, 0.0) + d
+            thu_tu_video = {v: i for i, (v, _) in enumerate(
+                sorted(diem_video.items(), key=lambda x: -x[1]))}
+            # Trong N video đầu: xếp theo thứ hạng video rồi tới điểm keyframe.
+            # Ngoài N video đó: giữ nguyên thứ tự RRF, xếp sau.
+            hits = sorted(
+                hits,
+                key=lambda x: (0 if thu_tu_video[x[0].split("#")[0]] < args.uu_tien_video
+                               else 1,
+                               thu_tu_video[x[0].split("#")[0]], -x[1]))
 
         answers, dem_video = [], {}
         for kf_id, _ in hits:
