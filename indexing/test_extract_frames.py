@@ -19,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from indexing.extract_frames import (extract_window,  # noqa: E402
-                                     extract_windows, iter_frames, video_info)
+                                     extract_window_nhanh, extract_windows,
+                                     iter_frames, iter_frames_chon, video_info)
 
 N_FRAME, FPS, W, H = 200, 25, 128, 64
 dat = truot = 0
@@ -117,6 +118,27 @@ try:
     check("cửa sổ chồng nhau: không trùng lặp, vẫn tăng dần",
           idxs == sorted(set(idxs)) and idxs[0] == 30 and idxs[-1] == 80,
           f"{len(idxs)} frame, {idxs[0]}..{idxs[-1]}")
+
+    # --- Bản NHANH (ffmpeg tự lọc): chỉ số phải khớp y hệt bản chậm ---
+    for lo, hi, st in [(0, 30, 1), (50, 59, 1), (100, 120, 5), (7, 199, 13)]:
+        cham = [(f, r_trung_binh(a))
+                for f, a in iter_frames(video, lo, hi, st)]
+        nhanh = [(f, r_trung_binh(a))
+                 for f, a in iter_frames_chon(video, lo, hi, st)]
+        check(f"bản nhanh khớp bản chậm [{lo},{hi}] step={st}",
+              [f for f, _ in cham] == [f for f, _ in nhanh]
+              and all(abs(a - b) < 2 for (_, a), (_, b) in zip(cham, nhanh)),
+              f"chậm {len(cham)} frame, nhanh {len(nhanh)} frame")
+
+    idxs, imgs = extract_window_nhanh(video, 100, 20, 4)
+    check("extract_window_nhanh: chỉ số khớp nội dung",
+          idxs[0] == 80 and idxs[-1] == 120
+          and not [i for i, a in zip(idxs, imgs)
+                   if abs(r_trung_binh(a) - i) > 2], f"{idxs}")
+
+    idxs, _ = extract_window_nhanh(video, 5, 50, 1)
+    check("bản nhanh: tâm sát đầu video -> không có chỉ số âm", idxs[0] == 0,
+          f"đầu = {idxs[0]}")
 
     # --- ffmpeg thu nhỏ sẵn: chỉ số vẫn phải đúng ---
     idxs, imgs = extract_window(video, 100, 10, 2, size=(64, 32))
