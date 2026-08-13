@@ -24,8 +24,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from agent.clip_encoder import ClipEncoder  # noqa: E402
 from agent.understand import understand  # noqa: E402
-from agent.vqa import chon_va_tra_loi  # noqa: E402
-from indexing.extract_frames import extract_window  # noqa: E402
+from agent.vqa import chon_va_tra_loi, doc_ky  # noqa: E402
+from indexing.extract_frames import extract_window_nhanh  # noqa: E402
 
 MAX_NOP = 100
 RRF_K = 60
@@ -56,6 +56,10 @@ def main():
                          "cùng một khoảnh khắc")
     ap.add_argument("--ban-kinh", type=int, default=90,
                     help="nửa bề rộng cửa sổ trích frame (90 ~ 3 giây ở 30fps)")
+    ap.add_argument("--n-luoi", type=int, default=2,
+                    help="lưới phóng to n×n ở lượt đọc kỹ (2 = 4 vùng)")
+    ap.add_argument("--khong-doc-ky", action="store_true",
+                    help="bỏ lượt đọc kỹ có phóng to — để đo xem nó giúp gì")
     args = ap.parse_args()
 
     idir = Path(args.index)
@@ -113,8 +117,12 @@ def main():
             vp = Path(args.videos) / f"{k['video_id']}.mp4"
             if not vp.exists():
                 continue
-            fids, imgs = extract_window(vp, k["frame"], args.ban_kinh, buoc,
-                                        size=(640, 360))
+            # Trích ở ĐỘ PHÂN GIẢI GỐC — chữ trên biển hiệu ở 640x360 không
+            # đọc nổi, đúng nguyên nhân 4/10 câu Q&A sai. Lượt chọn ứng viên
+            # tự thu nhỏ lại nên không tốn token oan.
+            # Bản _nhanh để ffmpeg tự lọc: bản thường truyền MỌI frame từ đầu
+            # video qua ống, ở full-res là hàng chục GB cho một cửa sổ.
+            fids, imgs = extract_window_nhanh(vp, k["frame"], args.ban_kinh, buoc)
             if imgs:
                 ung_vien.append({"video_id": k["video_id"], "frame": k["frame"],
                                  "frame_ids": fids, "images": imgs})
@@ -122,10 +130,20 @@ def main():
             print(f"{q['qid']}: không trích được frame nào")
             continue
 
-        # --- Bước 4: Claude tự chọn ứng viên rồi trả lời ---
+        # --- Bước 4a: Claude chọn ứng viên (ảnh vừa phải, nhiều ứng viên) ---
         kq = chon_va_tra_loi(ung_vien, q["question_vi"], q["query_vi"])
-        dap_an = kq["answer"]
         chon = ung_vien[kq["ung_vien"]]
+        dap_an = kq["answer"]
+
+        # --- Bước 4b: đọc kỹ ứng viên đã chọn, có phóng to từng vùng ---
+        # Chỉ còn MỘT ứng viên nên gửi được ảnh đầy đủ + các ô phóng to.
+        # Đây là nhóm công cụ "không gian" trong khung STAR (tập huấn buổi 3).
+        if not args.khong_doc_ky:
+            ky = doc_ky(chon["images"], q["question_vi"], q["query_vi"],
+                        chon["frame_ids"], args.n_luoi)
+            if ky["chac_chan"] >= kq.get("chac_chan", 0.5):
+                dap_an = ky["answer"]
+            kq["_ky"] = ky
 
         # --- Bước 5: ĐẨY ứng viên model chọn lên đầu danh sách nộp ---
         # Model vừa đóng vai trò xếp hạng lại: nó nhìn được ảnh, CLIP thì không.
