@@ -45,7 +45,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--queries", required=True)
     ap.add_argument("--index", required=True)
-    ap.add_argument("--videos", required=True)
+    ap.add_argument("--videos", help="thư mục video; chỉ cần khi KHÔNG có --keyframes")
+    ap.add_argument("--keyframes", help="thư mục ảnh keyframe BTC. Có nó thì đọc "
+                                        "ảnh TỨC THÌ thay vì giải mã video "
+                                        "55-70 giây mỗi ứng viên — đây là nút "
+                                        "thắt của Q&A")
+    ap.add_argument("--map", help="thư mục map-keyframes. BẮT BUỘC khi index "
+                                  "dùng ID theo `n` (index từ CLIPFeatures BTC)")
     ap.add_argument("--out", default="eval/results/bai_nop_qa.jsonl")
     ap.add_argument("--n-frame", type=int, default=3,
                     help="số khung hình mỗi ứng viên")
@@ -78,6 +84,20 @@ def main():
     index = faiss.read_index(str(idir / f"{ten}.faiss"))
     ids = json.load(open(idir / f"{ten}_ids.json"))
     print(f"Index {ten}: {index.ntotal} vector")
+
+    # ID trong index có hai kiểu: "<video>#<frame_idx>" (index tự dựng từ video)
+    # hoặc "<video>#<n>" (index từ CLIPFeatures BTC). Có --map thì là kiểu thứ
+    # hai, phải đổi n -> frame_idx mới nộp bài được.
+    mk_anh = None
+    if args.map:
+        from indexing.map_keyframes import MapKeyframes
+        mk_anh = MapKeyframes(args.map, args.keyframes)
+        print(f"map-keyframes: {len(mk_anh.cac_video())} video"
+              + (f" | ảnh keyframe: {args.keyframes}" if args.keyframes else ""))
+    elif args.keyframes:
+        sys.exit("--keyframes cần đi kèm --map (để đổi n sang frame_idx)")
+    elif not args.videos:
+        sys.exit("Cần --keyframes + --map, hoặc --videos")
 
     encoder = ClipEncoder()
 
@@ -112,28 +132,47 @@ def main():
         # đưa cho model xem 5 khung gần trùng nhau thì phí, phải đa dạng.
         khoanh_khac = []
         for kf, _ in hits:
-            v, f = kf.split("#")
-            f = int(f)
+            v, so = kf.split("#")
+            so = int(so)
+            # so = `n` khi index từ CLIPFeatures BTC, = frame_idx khi index tự
+            # dựng từ video. Quy về frame_idx để so khoảng cách cho đúng.
+            if mk_anh is not None:
+                n = so
+                try:
+                    f = mk_anh.frame_idx(v, n)
+                except (KeyError, FileNotFoundError):
+                    continue
+            else:
+                n, f = None, so
             if any(k["video_id"] == v and abs(k["frame"] - f) < args.gan_nhau
                    for k in khoanh_khac):
                 continue
-            khoanh_khac.append({"video_id": v, "frame": f})
+            khoanh_khac.append({"video_id": v, "n": n, "frame": f})
             if len(khoanh_khac) >= args.n_ung_vien:
                 break
 
-        # --- Bước 3: trích frame cho từng ứng viên ---
-        buoc = max(1, (2 * args.ban_kinh) // max(1, args.n_frame - 1))
+        # --- Bước 3: lấy ảnh cho từng ứng viên ---
         ung_vien = []
         for k in khoanh_khac:
-            vp = Path(args.videos) / f"{k['video_id']}.mp4"
-            if not vp.exists():
-                continue
-            # Trích ở ĐỘ PHÂN GIẢI GỐC — chữ trên biển hiệu ở 640x360 không
-            # đọc nổi, đúng nguyên nhân 4/10 câu Q&A sai. Lượt chọn ứng viên
-            # tự thu nhỏ lại nên không tốn token oan.
-            # Bản _nhanh để ffmpeg tự lọc: bản thường truyền MỌI frame từ đầu
-            # video qua ống, ở full-res là hàng chục GB cho một cửa sổ.
-            fids, imgs = extract_window_nhanh(vp, k["frame"], args.ban_kinh, buoc)
+            if mk_anh is not None:
+                # ĐỌC THẲNG ẢNH KEYFRAME của BTC — tức thì. Trước đây phải giải
+                # mã video 55-70 giây mỗi ứng viên nên chỉ dám đưa model xem 6
+                # ứng viên, trong khi đáp án nằm ở hạng 8-46. Đó chính là nút
+                # thắt của Q&A. Đọc file JPEG gỡ được hoàn toàn.
+                fids, imgs = [], []
+                for dn in range(-(args.n_frame // 2), args.n_frame // 2 + 1):
+                    p = mk_anh.duong_dan_anh(k["video_id"], k["n"] + dn)
+                    if p:
+                        from PIL import Image
+                        fids.append(mk_anh.frame_idx(k["video_id"], k["n"] + dn))
+                        imgs.append(Image.open(p).convert("RGB"))
+            else:
+                vp = Path(args.videos) / f"{k['video_id']}.mp4"
+                if not vp.exists():
+                    continue
+                buoc = max(1, (2 * args.ban_kinh) // max(1, args.n_frame - 1))
+                fids, imgs = extract_window_nhanh(vp, k["frame"], args.ban_kinh,
+                                                  buoc)
             if imgs:
                 ung_vien.append({"video_id": k["video_id"], "frame": k["frame"],
                                  "frame_ids": fids, "images": imgs})
@@ -166,9 +205,16 @@ def main():
         uu_tien = [kf for kf, _ in hits if kf.startswith(chon["video_id"] + "#")]
         con_lai = [kf for kf, _ in hits if not kf.startswith(chon["video_id"] + "#")]
         thu_tu = uu_tien + con_lai
-        answers = [{"video_id": kf.split("#")[0],
-                    "frame_id": int(kf.split("#")[1]),
-                    "answer": dap_an} for kf in thu_tu]
+        answers = []
+        for kf in thu_tu:
+            v, so = kf.split("#")
+            so = int(so)
+            if mk_anh is not None:
+                try:
+                    so = mk_anh.frame_idx(v, so)  # n -> frame_idx để nộp
+                except (KeyError, FileNotFoundError):
+                    continue
+            answers.append({"video_id": v, "frame_id": so, "answer": dap_an})
         bai_nop.append({"qid": q["qid"], "answers": answers})
 
         gt = q["gt"]

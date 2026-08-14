@@ -31,6 +31,7 @@ class MapKeyframes:
         self.kf_dir = Path(thu_muc_keyframes) if thu_muc_keyframes else None
         self._cache = {}
         self._mau = None  # nhớ mẫu tên ảnh đã dò ra, khỏi stat lại mỗi lần
+        self._thu_muc = None  # video_id -> thư mục chứa ảnh, dò một lần
 
     def _nap(self, video_id):
         if video_id in self._cache:
@@ -85,11 +86,28 @@ class MapKeyframes:
         d = self._nap(video_id)
         return list(zip(d["n"], d["frame"], d["time"]))
 
+    def _tim_thu_muc_anh(self):
+        """Dò một lần thư mục ảnh của TỪNG video, bất kể lồng bao nhiêu cấp.
+
+        BTC đóng gói theo lô nên đường dẫn thật hay là
+        `Keyframes_L21/keyframes/L21_V001/001.jpg` — bắt cứng cấu trúc
+        `<gốc>/<video>/<n>.jpg` sẽ không tìm thấy gì.
+        """
+        if self._thu_muc is not None:
+            return self._thu_muc
+        self._thu_muc = {}
+        if self.kf_dir:
+            can = set(self.cac_video())
+            for p in self.kf_dir.rglob("*"):
+                if p.is_dir() and p.name in can:
+                    self._thu_muc[p.name] = p
+        return self._thu_muc
+
     def duong_dan_anh(self, video_id: str, n: int):
         """Đường dẫn file ảnh keyframe, None nếu không tìm thấy."""
-        if not self.kf_dir:
+        folder = self._tim_thu_muc_anh().get(video_id)
+        if folder is None:
             return None
-        folder = self.kf_dir / video_id
         mau = (self._mau,) if self._mau else MAU_TEN_ANH
         for m in mau:
             p = folder / m.format(n=n)
