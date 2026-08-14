@@ -60,7 +60,18 @@ def main():
                     help="lưới phóng to n×n ở lượt đọc kỹ (2 = 4 vùng)")
     ap.add_argument("--khong-doc-ky", action="store_true",
                     help="bỏ lượt đọc kỹ có phóng to — để đo xem nó giúp gì")
+    ap.add_argument("--cache", default="eval/results/qa_cache.json",
+                    help="lưu/dùng lại đáp án. Q&A là dạng TỐN TIỀN NHẤT "
+                         "(mỗi câu 2 lượt gọi kèm ~25 ảnh) nên chạy lại để so "
+                         "cấu hình mà không cache là đốt tiền vô ích")
+    ap.add_argument("--refresh-cache", action="store_true")
     args = ap.parse_args()
+
+    cache_path = Path(args.cache)
+    qa_cache = {}
+    if cache_path.exists() and not args.refresh_cache:
+        qa_cache = json.loads(cache_path.read_text(encoding="utf-8"))
+        print(f"Dùng lại {len(qa_cache)} đáp án đã lưu từ {cache_path}")
 
     idir = Path(args.index)
     ten = next(idir.glob("*.faiss")).stem
@@ -131,19 +142,24 @@ def main():
             continue
 
         # --- Bước 4a: Claude chọn ứng viên (ảnh vừa phải, nhiều ứng viên) ---
-        kq = chon_va_tra_loi(ung_vien, q["question_vi"], q["query_vi"])
+        khoa = f"{q['qid']}|{args.n_ung_vien}|{args.khong_doc_ky}"
+        if khoa in qa_cache:
+            kq = qa_cache[khoa]
+        else:
+            kq = chon_va_tra_loi(ung_vien, q["question_vi"], q["query_vi"])
+            # --- Bước 4b: đọc kỹ ứng viên đã chọn, có phóng to từng vùng ---
+            # Chỉ còn MỘT ứng viên nên gửi được ảnh đầy đủ + các ô phóng to.
+            # Đây là nhóm công cụ "không gian" trong khung STAR (tập huấn buổi 3).
+            if not args.khong_doc_ky:
+                c = ung_vien[kq["ung_vien"]]
+                ky = doc_ky(c["images"], q["question_vi"], q["query_vi"],
+                            c["frame_ids"], args.n_luoi)
+                if ky["chac_chan"] >= kq.get("chac_chan", 0.5):
+                    kq["answer"] = ky["answer"]
+                kq["_ky"] = ky
+            qa_cache[khoa] = kq
         chon = ung_vien[kq["ung_vien"]]
         dap_an = kq["answer"]
-
-        # --- Bước 4b: đọc kỹ ứng viên đã chọn, có phóng to từng vùng ---
-        # Chỉ còn MỘT ứng viên nên gửi được ảnh đầy đủ + các ô phóng to.
-        # Đây là nhóm công cụ "không gian" trong khung STAR (tập huấn buổi 3).
-        if not args.khong_doc_ky:
-            ky = doc_ky(chon["images"], q["question_vi"], q["query_vi"],
-                        chon["frame_ids"], args.n_luoi)
-            if ky["chac_chan"] >= kq.get("chac_chan", 0.5):
-                dap_an = ky["answer"]
-            kq["_ky"] = ky
 
         # --- Bước 5: ĐẨY ứng viên model chọn lên đầu danh sách nộp ---
         # Model vừa đóng vai trò xếp hạng lại: nó nhìn được ảnh, CLIP thì không.
@@ -179,6 +195,9 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         for b in bai_nop:
             f.write(json.dumps(b, ensure_ascii=False) + "\n")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(qa_cache, ensure_ascii=False, indent=2),
+                          encoding="utf-8")
     n = len(bai_nop)
     print(f"\nTìm đúng vị trí: {dung_vi_tri}/{n}   "
           f"Trả lời đúng: {dung_dap_an}/{n}")

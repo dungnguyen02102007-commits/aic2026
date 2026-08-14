@@ -206,9 +206,12 @@ def chon_va_tra_loi(ung_vien, question_vi: str, mo_ta_vi: str) -> dict:
             noi_dung.append(_ma_hoa_anh(img, CANH_CHON))
     noi_dung.append({"type": "text", "text": f"\nCÂU HỎI: {question_vi}"})
 
+    # Lượt CHỌN dùng model rẻ: "cảnh nào khớp mô tả" dễ hơn nhiều so với
+    # "trả lời câu hỏi", mà lượt này lại gửi nhiều ảnh nhất (6 ứng viên × 3
+    # khung = 18 ảnh) nên là chỗ tốn tiền nhất. Lượt ĐỌC KỸ mới cần model mạnh.
     client = anthropic.Anthropic()
     resp = client.messages.create(
-        model=os.environ.get("AIC_VQA_MODEL", "claude-sonnet-5"),
+        model=os.environ.get("AIC_VQA_CHON_MODEL", "claude-haiku-4-5-20251001"),
         max_tokens=1024, system=VQA_CHON_SYSTEM,
         messages=[{"role": "user", "content": noi_dung}])
     if resp.stop_reason == "refusal":
