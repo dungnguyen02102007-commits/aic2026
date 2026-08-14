@@ -34,6 +34,26 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 MAC_DINH = ("ViT-L-14", "laion2b_s32b_b82k")
 
 
+class TapAnh:
+    """Dataset đọc + tiền xử lý ảnh.
+
+    PHẢI ở cấp module, không được lồng trong hàm: trên Windows, DataLoader
+    nhiều luồng dùng cơ chế `spawn` và phải pickle lớp này sang tiến trình con —
+    lớp lồng trong hàm là đối tượng cục bộ, không pickle được.
+    """
+
+    def __init__(self, paths, preprocess):
+        self.paths = paths
+        self.preprocess = preprocess
+
+    def __len__(self):
+        return len(self.paths)
+
+    def __getitem__(self, i):
+        from PIL import Image
+        return self.preprocess(Image.open(self.paths[i]).convert("RGB"))
+
+
 def liet_ke(kf_dir):
     """Trả về [(keyframe_id, đường dẫn ảnh)] sắp xếp ổn định.
 
@@ -100,12 +120,6 @@ def main():
     if gpu:
         model = model.cuda().half()  # half: nhanh gấp đôi, sai số không đáng kể
 
-    class Anh(Dataset):
-        def __init__(self, ds): self.ds = ds
-        def __len__(self): return len(self.ds)
-        def __getitem__(self, i):
-            return preprocess(Image.open(self.ds[i]).convert("RGB"))
-
     t0 = time.time()
     for s in range(0, len(paths), args.shard):
         f = out / f"phan_{s:07d}.npy"
@@ -113,8 +127,8 @@ def main():
             print(f"bỏ qua {f.name} (đã có)")
             continue
         lo = paths[s:s + args.shard]
-        dl = DataLoader(Anh(lo), batch_size=args.batch, num_workers=args.workers,
-                        pin_memory=gpu)
+        dl = DataLoader(TapAnh(lo, preprocess), batch_size=args.batch,
+                        num_workers=args.workers, pin_memory=gpu)
         ra = []
         with torch.no_grad():
             for b in dl:
