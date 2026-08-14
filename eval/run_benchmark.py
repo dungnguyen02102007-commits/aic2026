@@ -116,7 +116,7 @@ def first_hit_rank(rscores, threshold=1.0):
 
 def load_jsonl(path):
     rows = []
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8-sig") as f:
         for ln, line in enumerate(f, 1):
             line = line.strip()
             if not line or line.startswith("//"):

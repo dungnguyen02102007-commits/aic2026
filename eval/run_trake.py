@@ -61,7 +61,7 @@ def main():
         D, I = index.search(tv, min(k, index.ntotal))
         return [(ids[i], float(d)) for d, i in zip(D[0], I[0]) if i != -1]
 
-    queries = [json.loads(l) for l in open(args.queries, encoding="utf-8")
+    queries = [json.loads(l) for l in open(args.queries, encoding="utf-8-sig")
                if l.strip() and not l.startswith("//")]
     bai_nop = []
 
