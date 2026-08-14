@@ -43,7 +43,11 @@ def main():
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--queries", required=True)
-    ap.add_argument("--index", required=True)
+    ap.add_argument("--index", required=True, nargs="+",
+                    help="một hoặc NHIỀU thư mục index. Đưa nhiều thì tự FUSION "
+                         "bằng RRF — đo thật trên 873 video: B/32 0.553, "
+                         "L/14 0.529, nhưng GỘP CẢ HAI 0.635. Không model nào "
+                         "một mình thắng, gộp lại mới ăn.")
     ap.add_argument("--out", default="eval/results/bai_nop_kis.jsonl")
     ap.add_argument("--max-per-video", type=int, default=0,
                     help="0 = không giới hạn. Đặt >0 để ép đa dạng video "
@@ -70,6 +74,11 @@ def main():
     ap.add_argument("--map", help="thư mục map-keyframes. BẮT BUỘC khi index "
                                   "dùng ID theo `n` (index từ CLIPFeatures của "
                                   "BTC) — phải đổi n sang frame_idx mới nộp được")
+    ap.add_argument("--model", help="model encode CÂU TRUY VẤN. PHẢI TRÙNG với "
+                                    "model đã dựng index, sai là hai không gian "
+                                    "vector khác nhau, điểm tụt mà không báo lỗi. "
+                                    "Mặc định ViT-B-32-quickgelu (khớp CLIPFeatures BTC)")
+    ap.add_argument("--pretrained")
     args = ap.parse_args()
 
     # ID trong index có hai kiểu:
@@ -89,18 +98,44 @@ def main():
         cache = json.loads(cache_path.read_text(encoding="utf-8"))
         print(f"Dùng lại {len(cache)} bản dịch từ {cache_path}")
 
-    idir = Path(args.index)
-    ten = next(idir.glob("*.faiss")).stem
-    index = faiss.read_index(str(idir / f"{ten}.faiss"))
-    ids = json.load(open(idir / f"{ten}_ids.json"))
-    print(f"Index {ten}: {index.ntotal} vector")
+    kho = []  # [(index, ids, encoder)]
+    for d in args.index:
+        idir = Path(d)
+        ten = next(idir.glob("*.faiss")).stem
+        ix = faiss.read_index(str(idir / f"{ten}.faiss"))
+        iids = json.load(open(idir / f"{ten}_ids.json"))
+        kho.append([ten, ix, iids, None])
+        print(f"Index {ten}: {ix.ntotal:,} vector × {ix.d} chiều")
+    index, ids = kho[0][1], kho[0][2]
 
-    encoder = ClipEncoder()
+    # Tự nhận model theo SỐ CHIỀU của index. Ghép nhầm model với index là hai
+    # không gian vector khác nhau — điểm tụt mà không có lỗi nào báo ra, nên
+    # thà suy ra tự động còn hơn để người dùng gõ tay.
+    THEO_CHIEU = {512: ("ViT-B-32-quickgelu", "openai"),
+                  768: ("ViT-L-14", "laion2b_s32b_b82k")}
+    for k in kho:
+        if args.model:
+            ten_m, pre = args.model, args.pretrained or "openai"
+        elif k[1].d in THEO_CHIEU:
+            ten_m, pre = THEO_CHIEU[k[1].d]
+        else:
+            sys.exit(f"Index {k[0]} có {k[1].d} chiều — không đoán được model. "
+                     f"Chỉ rõ bằng --model / --pretrained.")
+        k[3] = ClipEncoder(ten_m, pre)
+        print(f"  {k[0]} ({k[1].d} chiều) -> {ten_m}")
+        if k[3].encode_text(["x"]).shape[1] != k[1].d:
+            sys.exit(f"LỆCH SỐ CHIỀU ở {k[0]} — dừng thay vì chạy ra kết quả vô nghĩa.")
+    if len(kho) > 1:
+        print(f"FUSION {len(kho)} index bằng RRF")
 
     def tim(text, k=400):
-        tv = encoder.encode_text([text]).astype("float32")
-        D, I = index.search(tv, min(k, index.ntotal))
-        return [(ids[i], float(d)) for d, i in zip(D[0], I[0]) if i != -1]
+        """Trả về danh sách hits của TỪNG index (RRF gộp ở ngoài)."""
+        ra = []
+        for _, ix, iids, e in kho:
+            tv = e.encode_text([text]).astype("float32")
+            D, I = ix.search(tv, min(k, ix.ntotal))
+            ra.append([(iids[i], float(d)) for d, i in zip(D[0], I[0]) if i != -1])
+        return ra
 
     queries = [json.loads(l) for l in open(args.queries, encoding="utf-8")
                if l.strip() and not l.startswith("//")]
@@ -118,7 +153,7 @@ def main():
         cau = [r["search_text_en"]]
         if not args.no_variants:
             cau += r.get("variants", [])[:3]
-        hits = rrf([tim(c) for c in cau])
+        hits = rrf([ds for c in cau for ds in tim(c)])
 
         if args.uu_tien_video:
             # Gom điểm theo video: điểm video = tổng điểm RRF của các keyframe
