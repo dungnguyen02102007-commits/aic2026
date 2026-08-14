@@ -128,7 +128,7 @@ def main():
                     help="số truy vấn mong đợi (BTC: 100)")
     args = ap.parse_args()
 
-    bai_nop = [json.loads(l) for l in open(args.submissions, encoding="utf-8")
+    bai_nop = [json.loads(l) for l in open(args.submissions, encoding="utf-8-sig")
                if l.strip()]
     canh_bao = viet(bai_nop, args.out, args.task, args.corpus, args.n_query)
 

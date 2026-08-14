@@ -44,7 +44,10 @@ def main():
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--queries", required=True)
-    ap.add_argument("--index", required=True)
+    ap.add_argument("--index", required=True, nargs="+",
+                    help="một hoặc NHIỀU thư mục index, đưa nhiều thì tự fusion "
+                         "bằng RRF. Đo trên 50 câu KIS: B/32 0.340, L/14 0.344, "
+                         "gộp cả hai 0.388 và R@1 gấp đôi")
     ap.add_argument("--videos", help="thư mục video; chỉ cần khi KHÔNG có --keyframes")
     ap.add_argument("--keyframes", help="thư mục ảnh keyframe BTC. Có nó thì đọc "
                                         "ảnh TỨC THÌ thay vì giải mã video "
@@ -79,11 +82,21 @@ def main():
         qa_cache = json.loads(cache_path.read_text(encoding="utf-8"))
         print(f"Dùng lại {len(qa_cache)} đáp án đã lưu từ {cache_path}")
 
-    idir = Path(args.index)
-    ten = next(idir.glob("*.faiss")).stem
-    index = faiss.read_index(str(idir / f"{ten}.faiss"))
-    ids = json.load(open(idir / f"{ten}_ids.json"))
-    print(f"Index {ten}: {index.ntotal} vector")
+    THEO_CHIEU = {512: ("ViT-B-32-quickgelu", "openai"),
+                  768: ("ViT-L-14", "laion2b_s32b_b82k")}
+    kho = []
+    for d in args.index:
+        idir = Path(d)
+        ten = next(idir.glob("*.faiss")).stem
+        ix = faiss.read_index(str(idir / f"{ten}.faiss"))
+        iids = json.load(open(idir / f"{ten}_ids.json"))
+        if ix.d not in THEO_CHIEU:
+            sys.exit(f"Index {ten} có {ix.d} chiều — chưa biết model tương ứng.")
+        m, p = THEO_CHIEU[ix.d]
+        kho.append((ten, ix, iids, m, p))
+        print(f"Index {ten}: {ix.ntotal:,} vector × {ix.d} chiều -> {m}")
+    if len(kho) > 1:
+        print(f"FUSION {len(kho)} index bằng RRF")
 
     # ID trong index có hai kiểu: "<video>#<frame_idx>" (index tự dựng từ video)
     # hoặc "<video>#<n>" (index từ CLIPFeatures BTC). Có --map thì là kiểu thứ
@@ -99,14 +112,18 @@ def main():
     elif not args.videos:
         sys.exit("Cần --keyframes + --map, hoặc --videos")
 
-    encoder = ClipEncoder()
+    enc_kho = [(ix, iids, ClipEncoder(m, p)) for _, ix, iids, m, p in kho]
 
     def tim(text, k=400):
-        tv = encoder.encode_text([text]).astype("float32")
-        D, I = index.search(tv, min(k, index.ntotal))
-        return [(ids[i], float(d)) for d, i in zip(D[0], I[0]) if i != -1]
+        """Trả về danh sách hits của TỪNG index (RRF gộp ở ngoài)."""
+        ra = []
+        for ix, iids, e in enc_kho:
+            tv = e.encode_text([text]).astype("float32")
+            D, I = ix.search(tv, min(k, ix.ntotal))
+            ra.append([(iids[i], float(d)) for d, i in zip(D[0], I[0]) if i != -1])
+        return ra
 
-    queries = [json.loads(l) for l in open(args.queries, encoding="utf-8")
+    queries = [json.loads(l) for l in open(args.queries, encoding="utf-8-sig")
                if l.strip() and not l.startswith("//")]
     bai_nop = []
     dung_vi_tri = dung_dap_an = 0
@@ -123,7 +140,7 @@ def main():
         # top-5 từ 1/10 lên 3/10.
         r = understand(f"{q['query_vi']}. {q['question_vi']}")
         cau = [r["search_text_en"]] + r.get("variants", [])[:3]
-        hits = rrf([tim(c) for c in cau])[:MAX_NOP]
+        hits = rrf([ds for c in cau for ds in tim(c)])[:MAX_NOP]
         if not hits:
             print(f"{q['qid']}: không tìm được gì")
             continue
