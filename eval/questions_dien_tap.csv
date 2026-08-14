@@ -1,0 +1,101 @@
+query_id,task_type,query_vi,question_vi,events_vi
+Q_0001,qa,Cảnh một buổi lễ khai trương có cắt băng khánh thành,Cảnh này quay vào ban ngày hay ban đêm?,
+Q_0002,kis,Cảnh người dân xếp hàng tiêm chủng tại trạm y tế,,
+Q_0003,trake,"Cảnh một vụ tai nạn giao thông trên đường phố đông xe cộ, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0004,trake,"Cảnh thi công công trình cầu đường có máy xúc, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0005,kis,Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ,,
+Q_0006,qa,Cảnh phòng thí nghiệm có nhà nghiên cứu mặc áo blouse trắng,Cảnh này quay vào ban ngày hay ban đêm?,
+Q_0007,trake,"Cảnh một buổi lễ khai trương có cắt băng khánh thành, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0008,kis,Cảnh phòng thí nghiệm có nhà nghiên cứu mặc áo blouse trắng,,
+Q_0009,kis,Cảnh một buổi biểu diễn văn nghệ trên sân khấu có đèn màu,,
+Q_0010,qa,"Cảnh trồng rừng, người dân cầm cây giống",Chữ hiển thị trên màn hình ghi gì?,
+Q_0011,trake,"Cảnh người dân đi xe máy dưới trời mưa lớn, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0012,trake,"Cảnh núi lửa phun trào với cột tro bụi, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0013,kis,Cảnh một buổi biểu diễn văn nghệ trên sân khấu có đèn màu,,
+Q_0014,kis,Cảnh một khu chợ đông người mua bán vào buổi sáng,,
+Q_0015,trake,"Cảnh cứu hộ người bị nạn sau bão lũ, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0016,kis,Cảnh cứu hộ người bị nạn sau bão lũ,,
+Q_0017,qa,Cảnh biển với tàu cá neo đậu ở cảng,Chữ hiển thị trên màn hình ghi gì?,
+Q_0018,trake,"Cảnh khai thác khoáng sản có xe tải lớn, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0019,trake,"Cảnh người dân xếp hàng tiêm chủng tại trạm y tế, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0020,qa,Cảnh người thợ hàn đang làm việc với tia lửa bắn ra,Trong cảnh có bao nhiêu thợ hàn?,
+Q_0021,kis,Cảnh một buổi lễ khai trương có cắt băng khánh thành,,
+Q_0022,qa,Cảnh trang trại chăn nuôi bò sữa,Con bò trong cảnh có màu gì?,
+Q_0023,trake,"Cảnh cứu hộ người bị nạn sau bão lũ, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0024,kis,Cảnh họp báo có nhiều phóng viên cầm máy quay,,
+Q_0025,kis,Cảnh một vụ tai nạn giao thông trên đường phố đông xe cộ,,
+Q_0026,qa,Cảnh cứu hộ người bị nạn sau bão lũ,Lực lượng cứu hộ đang ở vị trí nào trong khung hình?,
+Q_0027,qa,Cảnh đường sắt với đoàn tàu đang chạy qua,Trong cảnh có bao nhiêu đoàn tàu?,
+Q_0028,trake,"Cảnh một buổi lễ khai trương có cắt băng khánh thành, gồm 3 khoảnh khắc",,cảnh toàn cảnh từ xa | cảnh cận nhân vật chính | cảnh người dân phản ứng
+Q_0029,qa,Cảnh bác sĩ đang khám bệnh cho bệnh nhân trong phòng khám,Bác sĩ đang ở vị trí nào trong khung hình?,
+Q_0030,qa,Cảnh công nhân đang làm việc trên dây chuyền trong nhà máy,Công nhân đang ở vị trí nào trong khung hình?,
+Q_0031,qa,Cảnh người dân xếp hàng tiêm chủng tại trạm y tế,Cảnh này quay vào ban ngày hay ban đêm?,
+Q_0032,trake,"Cảnh thi công công trình cầu đường có máy xúc, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0033,trake,"Cảnh sạt lở đất chắn ngang đường đèo, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0034,kis,Cảnh học sinh mặc đồng phục trắng trong sân trường,,
+Q_0035,kis,Cảnh đường sắt với đoàn tàu đang chạy qua,,
+Q_0036,trake,"Cảnh công nhân vệ sinh môi trường thu gom rác trên phố, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0037,trake,"Cảnh học sinh mặc đồng phục trắng trong sân trường, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0038,trake,"Cảnh họp báo có nhiều phóng viên cầm máy quay, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0039,qa,Cảnh người dẫn chương trình nam trong trường quay tin tức,Người dẫn trong cảnh có màu gì?,
+Q_0040,kis,Cảnh một cuộc diễu hành có nhiều người cầm cờ,,
+Q_0041,kis,"Cảnh trồng rừng, người dân cầm cây giống",,
+Q_0042,trake,"Cảnh trang trại chăn nuôi bò sữa, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0043,qa,Cảnh thi công công trình cầu đường có máy xúc,Máy xúc đang ở vị trí nào trong khung hình?,
+Q_0044,kis,Cảnh một buổi lễ khai trương có cắt băng khánh thành,,
+Q_0045,kis,Cảnh sân bay với máy bay đang lăn bánh,,
+Q_0046,kis,Cảnh một vụ tai nạn giao thông trên đường phố đông xe cộ,,
+Q_0047,qa,Cảnh một khu chợ đông người mua bán vào buổi sáng,Chữ hiển thị trên màn hình ghi gì?,
+Q_0048,trake,"Cảnh người dân thu hoạch lúa trên cánh đồng, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0049,kis,Cảnh trẻ em vui chơi trong công viên,,
+Q_0050,trake,"Cảnh trẻ em vui chơi trong công viên, gồm 3 khoảnh khắc",,lúc mới bắt đầu | khi đang diễn ra | lúc kết thúc
+Q_0051,trake,"Cảnh ngập lụt, nước dâng cao trên đường làng, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0052,kis,Cảnh sạt lở đất chắn ngang đường đèo,,
+Q_0053,trake,"Cảnh một cuộc diễu hành có nhiều người cầm cờ, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0054,qa,Cảnh sạt lở đất chắn ngang đường đèo,Trong cảnh có bao nhiêu đất đá?,
+Q_0055,trake,"Cảnh phòng thí nghiệm có nhà nghiên cứu mặc áo blouse trắng, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0056,qa,Cảnh người dẫn chương trình nam trong trường quay tin tức,Người dẫn trong cảnh có màu gì?,
+Q_0057,trake,"Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ, gồm 3 khoảnh khắc",,cảnh toàn cảnh từ xa | cảnh cận nhân vật chính | cảnh người dân phản ứng
+Q_0058,qa,Cảnh người dân đi xe máy dưới trời mưa lớn,Áo mưa đang ở vị trí nào trong khung hình?,
+Q_0059,kis,Cảnh gian hàng triển lãm công nghệ tại hội chợ,,
+Q_0060,qa,Cảnh một buổi biểu diễn văn nghệ trên sân khấu có đèn màu,Diễn viên đang ở vị trí nào trong khung hình?,
+Q_0061,kis,Cảnh công nhân vệ sinh môi trường thu gom rác trên phố,,
+Q_0062,qa,Cảnh người dân thu hoạch lúa trên cánh đồng,Người nông dân đang ở vị trí nào trong khung hình?,
+Q_0063,qa,Cảnh một phiên tòa xét xử có bị cáo đứng trước vành móng ngựa,Trong cảnh có bao nhiêu bị cáo?,
+Q_0064,kis,Cảnh một buổi lễ khai trương có cắt băng khánh thành,,
+Q_0065,qa,Cảnh biển với tàu cá neo đậu ở cảng,Trong cảnh có bao nhiêu tàu cá?,
+Q_0066,kis,Cảnh đường sắt với đoàn tàu đang chạy qua,,
+Q_0067,trake,"Cảnh một đám cháy lớn bốc khói đen tại khu nhà xưởng, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0068,qa,Cảnh một buổi lễ khai trương có cắt băng khánh thành,Chữ hiển thị trên màn hình ghi gì?,
+Q_0069,qa,"Cảnh ngập lụt, nước dâng cao trên đường làng",Nhà dân trong cảnh có màu gì?,
+Q_0070,qa,Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ,Khách hàng trong cảnh có màu gì?,
+Q_0071,kis,Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ,,
+Q_0072,qa,Cảnh học sinh mặc đồng phục trắng trong sân trường,Học sinh trong cảnh có màu gì?,
+Q_0073,kis,Cảnh biển với tàu cá neo đậu ở cảng,,
+Q_0074,trake,"Cảnh sân bay với máy bay đang lăn bánh, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0075,trake,"Cảnh người dân đi xe máy dưới trời mưa lớn, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0076,kis,Cảnh họp báo có nhiều phóng viên cầm máy quay,,
+Q_0077,qa,Cảnh sân bay với máy bay đang lăn bánh,Cảnh này quay vào ban ngày hay ban đêm?,
+Q_0078,kis,Cảnh biển với tàu cá neo đậu ở cảng,,
+Q_0079,qa,Cảnh trẻ em vui chơi trong công viên,Trẻ em trong cảnh có màu gì?,
+Q_0080,kis,"Cảnh nuôi trồng thủy sản, ao cá ở vùng quê",,
+Q_0081,kis,Cảnh một buổi biểu diễn văn nghệ trên sân khấu có đèn màu,,
+Q_0082,trake,"Cảnh phòng thí nghiệm có nhà nghiên cứu mặc áo blouse trắng, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0083,kis,Cảnh núi lửa phun trào với cột tro bụi,,
+Q_0084,kis,Cảnh một buổi biểu diễn văn nghệ trên sân khấu có đèn màu,,
+Q_0085,qa,Cảnh biển với tàu cá neo đậu ở cảng,Cảnh này quay vào ban ngày hay ban đêm?,
+Q_0086,trake,"Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0087,qa,Cảnh cứu hộ người bị nạn sau bão lũ,Trong cảnh có bao nhiêu lực lượng cứu hộ?,
+Q_0088,trake,"Cảnh một cửa hàng bán lẻ có khách hàng đang chọn đồ, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0089,trake,"Cảnh một khu chợ đông người mua bán vào buổi sáng, gồm 3 khoảnh khắc",,cảnh toàn cảnh từ xa | cảnh cận nhân vật chính | cảnh người dân phản ứng
+Q_0090,qa,Cảnh công nhân vệ sinh môi trường thu gom rác trên phố,Trong cảnh có bao nhiêu xe rác?,
+Q_0091,trake,"Cảnh họp báo có nhiều phóng viên cầm máy quay, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0092,trake,"Cảnh gian hàng triển lãm công nghệ tại hội chợ, gồm 3 khoảnh khắc",,cảnh hiện trường | cảnh phỏng vấn nhân chứng | cảnh người dẫn kết luận
+Q_0093,trake,"Cảnh đường sắt với đoàn tàu đang chạy qua, gồm 3 khoảnh khắc",,cảnh toàn cảnh từ xa | cảnh cận nhân vật chính | cảnh người dân phản ứng
+Q_0094,kis,"Cảnh ngập lụt, nước dâng cao trên đường làng",,
+Q_0095,kis,Cảnh trẻ em vui chơi trong công viên,,
+Q_0096,trake,"Cảnh người dẫn chương trình nam trong trường quay tin tức, gồm 3 khoảnh khắc",,trước khi lực lượng chức năng đến | khi lực lượng chức năng làm việc | sau khi xử lý xong
+Q_0097,qa,Cảnh đường sắt với đoàn tàu đang chạy qua,Đoàn tàu trong cảnh có màu gì?,
+Q_0098,qa,Cảnh bác sĩ đang khám bệnh cho bệnh nhân trong phòng khám,Bác sĩ đang ở vị trí nào trong khung hình?,
+Q_0099,qa,Cảnh người dân xếp hàng tiêm chủng tại trạm y tế,Người dân đang ở vị trí nào trong khung hình?,
+Q_0100,kis,Cảnh giao thông ùn tắc giờ cao điểm ở thành phố,,
